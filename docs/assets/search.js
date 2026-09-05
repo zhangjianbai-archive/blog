@@ -10,8 +10,10 @@
       row.hidden = !words.every(word => normalize(row.dataset.search).includes(word));
       if (!row.hidden) count++;
     }
-    document.querySelector('#result-count').textContent = `共 ${count} 个条目 · 含站务示例`;
+    document.querySelector('#result-count').textContent = `${count} 篇`;
     document.querySelector('#empty').hidden = count !== 0;
+    document.querySelector('#empty-message').textContent = words.length ? '没有匹配的文章' : '暂无文章';
+    document.querySelector('#clear-search').hidden = !words.length;
   }
   field.addEventListener('input', filter);
   document.querySelector('#search-form').addEventListener('submit', event => { event.preventDefault(); filter(); });
