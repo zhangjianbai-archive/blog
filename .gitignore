@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.DS_Store
+docs/*.html
+docs/articles/
+docs/about/
+docs/topics/
+docs/sitemap.xml
+docs/.nojekyll
