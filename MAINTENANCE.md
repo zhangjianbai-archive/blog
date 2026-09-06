@@ -4,8 +4,8 @@
 
 运行 `python build.py` 构建（Python 3.12+，无第三方依赖）。GitHub Actions 在 main 更新后自动发布 docs/。
 
-分类保存在 content/categories.json；12 份文档对应的标签保存在 content/tags.json。content/articles.json 当前为空。每篇文章需提供 slug、title、author、category、tags（标签 slug 数组）以及 sections（heading 和 paragraphs）；可以补充 summary、type、date。正文会进行 HTML 转义。
+分类保存在 content/categories.json；12 份文档对应的标签保存在 content/tags.json。标签的 title 保存完整名称，label 用于侧栏短名称。content/articles.json 当前收录 Klein 的《我从新教育一路走来的成长之路》，取自《11.网友文章合集.docx》，其余文档未导入。每篇文章需提供 slug、title、author、category、tags（标签 slug 数组）以及 sections（heading 和 paragraphs）；excerpt 为首页原文节选，summary 为摘要。date、dateLabel、updatedAt 分别保存日期、日期性质及完整时间；不要将编辑时间当成首次发表时间。正文会进行 HTML 转义。
 
-样式与搜索脚本位于 docs/assets/。沿用第一版首页、文章栏与侧栏布局，分类页提供分类卡片和标签入口。没有关于页或示例阅读页。构建仅清理 docs/ 中生成的 HTML，并检查内部链接；不删除静态资源。README 保留原文，不随网站文案调整。
+样式与搜索脚本位于 docs/assets/。首页为文章节选列表，左上角搜索，右侧为紧凑的分类、标签链接；分类页列出文章。文章页面包含完整正文和章节目录。搜索涵盖标题、作者、正文、分类与标签。关于页从 README 渲染博客介绍，仅转换 Markdown 格式；README 本身保持原文。没有示例阅读页。构建仅清理 docs/ 中生成的 HTML，并检查内部链接；不删除静态资源。
 
 本地先运行 `python build.py`，再运行 `python preview.py`，访问 http://localhost:8765/blog/ 。预览服务将 /blog/ 映射到 docs/，与 GitHub Pages 的项目路径一致。直接用普通静态服务器挂载 docs/ 到根目录会导致 /blog/assets/ 样式路径失效。
