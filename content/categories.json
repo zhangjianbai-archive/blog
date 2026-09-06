@@ -1,14 +1,5 @@
 [
- {"slug":"mockingbird","title":"嘲笑鸟飞起时：昔日校友回望今日学堂"},
- {"slug":"congying","title":"聪颖合集"},
- {"slug":"teachers-students-parents","title":"前教师、前学生、家长合集"},
- {"slug":"anonymous","title":"匿名用户合集"},
- {"slug":"zhang-chengfeng","title":"张乘风合集"},
- {"slug":"niu-qikai","title":"牛琪锴合集"},
- {"slug":"shouqihei","title":"守其黑合集"},
- {"slug":"huang-chuanke","title":"黄传科合集"},
- {"slug":"mao-zhen","title":"茅箴合集7篇"},
- {"slug":"zhang-chengyun","title":"张乘云合集"},
- {"slug":"netizens","title":"网友文章合集"},
- {"slug":"statements","title":"附录：张清一公开言论"}
+  {"slug":"experiences","title":"亲历与回忆"},
+  {"slug":"commentary","title":"评论与分析"},
+  {"slug":"statements","title":"公开言论"}
 ]

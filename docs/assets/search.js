@@ -18,4 +18,6 @@
   field.addEventListener('input', filter);
   document.querySelector('#search-form').addEventListener('submit', event => { event.preventDefault(); filter(); });
   document.querySelector('#clear-search').addEventListener('click', () => { field.value = ''; filter(); field.focus(); });
+  field.value = new URLSearchParams(window.location.search).get('q') || '';
+  filter();
 })();
