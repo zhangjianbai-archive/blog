@@ -1,6 +1,6 @@
 (() => {
   const field = document.querySelector('#search');
-  if (!field) return;
+  if (!field || !document.querySelector('#results')) return;
   const rows = [...document.querySelectorAll('[data-search]')];
   const normalize = text => text.normalize('NFKC').toLocaleLowerCase().trim();
   function filter() {
@@ -14,6 +14,10 @@
     document.querySelector('#empty').hidden = count !== 0;
     document.querySelector('#empty-message').textContent = words.length ? '没有匹配的文章' : '暂无文章';
     document.querySelector('#clear-search').hidden = !words.length;
+    const url = new URL(window.location.href);
+    if (field.value.trim()) url.searchParams.set('q', field.value.trim());
+    else url.searchParams.delete('q');
+    window.history.replaceState(null, '', url);
   }
   field.addEventListener('input', filter);
   document.querySelector('#search-form').addEventListener('submit', event => { event.preventDefault(); filter(); });

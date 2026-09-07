@@ -14,6 +14,7 @@ NAME = "张健柏档案馆"
 articles = json.loads((ROOT / "content/articles.json").read_text(encoding="utf-8"))
 categories = json.loads((ROOT / "content/categories.json").read_text(encoding="utf-8"))
 tags = json.loads((ROOT / "content/tags.json").read_text(encoding="utf-8"))
+features = json.loads((ROOT / "content/features.json").read_text(encoding="utf-8"))
 for entries in (categories, tags, articles):
     slugs = [entry["slug"] for entry in entries]
     assert len(slugs) == len(set(slugs)), "Duplicate slug"
@@ -21,6 +22,10 @@ for entries in (categories, tags, articles):
 for article in articles:
     assert article["category"] in {c["slug"] for c in categories}
     assert set(article.get("tags", [])) <= {t["slug"] for t in tags}
+    assert set(article.get("relatedCategories", [])) <= {c["slug"] for c in categories}
+for feature in features:
+    target = next(a for a in articles if a["slug"] == feature["article"])
+    assert 0 <= feature["section"] < len(target["sections"])
 OUT.mkdir(exist_ok=True)
 # Only generated HTML is removed; assets and source documents remain untouched.
 for old in OUT.rglob("*.html"):
@@ -44,8 +49,8 @@ def page(path, title, body, active="", noindex=False):
 <link rel="stylesheet" href="{link('assets/style.css')}"><script src="{link('assets/search.js')}" defer></script></head>
 <body><a class="skip" href="#main">跳至正文</a><div class="shell">
 <header class="site-header"><div class="site-identity"><a class="brand" href="{link()}">{NAME}</a>
-<form class="header-search" action="{link('articles/')}" method="get" role="search" aria-label="站内搜索">
-<label class="sr-only" for="header-query">搜索文章</label><input id="header-query" name="q" type="search" placeholder="搜索文章" autocomplete="off"><button type="submit">搜索</button></form>
+<form id="search-form" class="header-search" action="{link('articles/')}" method="get" role="search" aria-label="站内搜索">
+<label class="sr-only" for="search">搜索文章</label><input id="search" name="q" type="search" placeholder="搜索文章" autocomplete="off"><button type="submit">搜索</button></form>
 </div><nav aria-label="主导航">{nav}</nav></header>
 <main id="main">{body}</main>
 <footer><span>{NAME}</span><a href="https://github.com/zhangjianbai-archive/blog">GitHub</a></footer></div></body></html>'''
@@ -53,18 +58,26 @@ def page(path, title, body, active="", noindex=False):
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(html, encoding="utf-8")
 
+def in_category(a, slug):
+    return slug in [a["category"], *a.get("relatedCategories", [])]
+
 def count(kind, slug):
-    return sum(a.get("category") == slug if kind == "topics" else slug in a.get("tags", []) for a in articles)
+    return sum(in_category(a, slug) if kind == "topics" else slug in a.get("tags", []) for a in articles)
+
+def count_label(number):
+    return f'<span class="count">({number})</span>' if number else ''
 
 def taxonomy(entries, kind):
-    return '<ul class="link-list">' + "".join(
-        f'<li><a href="{link(kind+"/"+t["slug"]+"/")}" title="{e(t["title"], quote=True)}">{e(t.get("label", t["title"]))}</a><span class="count">({count(kind,t["slug"])})</span></li>'
+    return '<ul class="link-list '+('category-links' if kind == 'topics' else 'tag-links')+'">' + "".join(
+        f'<li><a href="{link(kind+"/"+t["slug"]+"/")}" title="{e(t["title"], quote=True)}">{e(t.get("label", t["title"]))}</a>{count_label(count(kind,t["slug"]))}</li>'
         for t in entries
     ) + '</ul>'
 
 def sidebar(toc=""):
+    feature_links = ''.join(f'<li><a href="{link("articles/"+f["article"]+"/")}#section-{f["section"]}">{e(f["title"])}</a></li>' for f in features)
     return f'''<aside class="sidebar" aria-label="博客侧栏">
 {('<section class="toc"><h2>文章目录</h2>'+toc+'</section>') if toc else ""}
+<section><h2>专题</h2><ul class="link-list feature-links">{feature_links}</ul></section>
 <section><h2>分类</h2>{taxonomy(categories, "topics")}</section>
 <section><h2>标签</h2>{taxonomy(tags, "tags")}</section>
 </aside>'''
@@ -88,16 +101,16 @@ def article_tags(a):
 
 def row(a, preview=False):
     text = [a["title"], a.get("author", ""), a.get("summary", "")]
-    text += [c["title"] for c in categories if c["slug"] == a["category"]]
+    text += [c["title"] for c in categories if in_category(a, c["slug"])]
     text += [t["title"] for t in tags if t["slug"] in a.get("tags", [])]
-    text += [p for s in a["sections"] for p in [s["heading"], *s["paragraphs"]]]
+    text += [p if isinstance(p, str) else p["alt"] for s in a["sections"] for p in [s["heading"], *s["paragraphs"]]]
     search = e(" ".join(text), quote=True)
     url = link("articles/"+a["slug"]+"/")
     excerpt = "".join(f'<p>{e(p)}</p>' for p in a.get("excerpt", [a.get("summary","")])) if preview else ""
     return f'''<article class="post" data-search="{search}">
 <h2 class="post-title"><a href="{url}">{e(a["title"])}</a></h2>
 {metadata(a)}{('<div class="excerpt">'+excerpt+'</div>') if preview else ""}
-{('<a class="read-more" href="'+url+'">阅读全文 »</a>') if preview else ""}{article_tags(a)}</article>'''
+<div class="post-footer">{('<a class="read-more" href="'+url+'">阅读全文 »</a>') if preview else ""}{article_tags(a)}</div></article>'''
 
 def empty():
     return '<p class="empty">暂无文章</p>'
@@ -105,31 +118,35 @@ def empty():
 page("", "首页", layout(''.join(row(a, preview=True) for a in articles) if articles else empty()), "首页")
 
 page("articles/", "文章目录", layout(f'''<h1 class="page-title">文章目录</h1>
-<form role="search" id="search-form" class="catalog-search"><label class="sr-only" for="search">查找文章</label>
-<input id="search" name="q" type="search" placeholder="标题、作者或关键词" autocomplete="off"><button type="submit">搜索</button></form>
 <p class="result-count" id="result-count" role="status">{len(articles)} 篇</p><div id="results">{''.join(row(a) for a in articles)}</div>
 <div id="empty" class="empty" {'hidden' if articles else ''}><p id="empty-message">暂无文章</p><button id="clear-search" hidden>清空搜索</button></div>'''), "文章目录")
 
 groups = []
 for c in categories:
-    items = [a for a in articles if a["category"] == c["slug"]]
+    items = [a for a in articles if in_category(a, c["slug"])]
     item_links = '<ul class="entry-list">' + "".join(f'<li><a href="{link("articles/"+a["slug"]+"/")}">{e(a["title"])}</a><span>{e(a["author"])}</span></li>' for a in items) + '</ul>' if items else ''
-    groups.append(f'<section class="category-group"><h2><a href="{link("topics/"+c["slug"]+"/")}">{e(c["title"])}</a><span class="count">({len(items)})</span></h2>{item_links}</section>')
+    groups.append(f'<section class="category-group"><h2><a href="{link("topics/"+c["slug"]+"/")}">{e(c["title"])}</a>{count_label(len(items))}</h2>{item_links}</section>')
 page("topics/", "分类与标签", layout('<h1 class="page-title">分类与标签</h1>' + ''.join(groups)), "分类与标签")
 
 for entries, kind in [(categories, "topics"), (tags, "tags")]:
     for entry in entries:
-        items = [a for a in articles if a["category"] == entry["slug"]] if kind == "topics" else [a for a in articles if entry["slug"] in a.get("tags", [])]
+        items = [a for a in articles if in_category(a, entry["slug"])] if kind == "topics" else [a for a in articles if entry["slug"] in a.get("tags", [])]
         page(kind+"/"+entry["slug"]+"/", entry["title"],
-             layout(f'<h1 class="page-title">{e(entry["title"])}<span class="count">({len(items)})</span></h1>' + (''.join(row(a) for a in items) if items else empty())),
+             layout(f'<h1 class="page-title">{e(entry["title"])}{count_label(len(items))}</h1>' + (''.join(row(a) for a in items) if items else empty())),
              "分类与标签")
+
+def paragraph_html(p):
+    if isinstance(p, str):
+        return f'<p>{e(p)}</p>'
+    assert re.fullmatch(r'assets/articles/[a-z0-9/-]+\.(png|jpg|webp)', p['image'])
+    return f'<figure><a href="{link(p["image"])}"><img src="{link(p["image"])}" alt="{e(p["alt"], quote=True)}" loading="lazy"></a></figure>'
 
 for a in articles:
     sections = "".join(
-        f'<section><h2 id="section-{i}">{e(s["heading"])}</h2>'+''.join(f'<p>{e(p)}</p>' for p in s["paragraphs"])+"</section>"
+        f'<section id="section-{i}">'+(f'<h2>{e(s["heading"])}</h2>' if s["heading"] else '')+('<blockquote>' if s.get('quotation') else '')+''.join(paragraph_html(p) for p in s["paragraphs"])+('</blockquote>' if s.get('quotation') else '')+"</section>"
         for i, s in enumerate(a["sections"])
     )
-    toc = "".join(f'<a href="#section-{i}">{e(s["heading"])}</a>' for i, s in enumerate(a["sections"]))
+    toc = "".join(f'<a href="#section-{i}">{e(s["heading"])}</a>' for i, s in enumerate(a["sections"]) if s["heading"])
     article_body = f'<article><h1 class="post-title article-title">{e(a["title"])}</h1>{metadata(a)}<div class="prose">{sections}</div>{article_tags(a)}</article>'
     page("articles/"+a["slug"]+"/", a["title"], layout(article_body, toc), "文章目录")
 
