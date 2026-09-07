@@ -12,10 +12,11 @@ BASE = "/blog"
 ORIGIN = "https://zhangjianbai-archive.github.io"
 NAME = "张健柏档案馆"
 articles = json.loads((ROOT / "content/articles.json").read_text(encoding="utf-8"))
+catalog = json.loads((ROOT / "content/catalog.json").read_text(encoding="utf-8"))
 categories = json.loads((ROOT / "content/categories.json").read_text(encoding="utf-8"))
 tags = json.loads((ROOT / "content/tags.json").read_text(encoding="utf-8"))
 features = json.loads((ROOT / "content/features.json").read_text(encoding="utf-8"))
-for entries in (categories, tags, articles):
+for entries in (categories, tags, articles, catalog, features):
     slugs = [entry["slug"] for entry in entries]
     assert len(slugs) == len(set(slugs)), "Duplicate slug"
     assert all(re.fullmatch(r"[a-z0-9-]+", slug) for slug in slugs), "Invalid slug"
@@ -23,9 +24,15 @@ for article in articles:
     assert article["category"] in {c["slug"] for c in categories}
     assert set(article.get("tags", [])) <= {t["slug"] for t in tags}
     assert set(article.get("relatedCategories", [])) <= {c["slug"] for c in categories}
-for feature in features:
-    target = next(a for a in articles if a["slug"] == feature["article"])
-    assert 0 <= feature["section"] < len(target["sections"])
+for item in catalog:
+    # Catalog entries must never carry unpublished text or images into the output.
+    assert set(item) <= {"slug", "title", "author", "authorSource", "category", "topic", "tags", "kind", "source", "article"}
+    feature = next(f for f in features if f["slug"] == item["topic"])
+    assert item["category"] == feature["category"]
+    assert set(item["tags"]) <= {t["slug"] for t in tags}
+    if item.get("article"):
+        assert item["article"] in {a["slug"] for a in articles}
+assert {item["article"] for item in catalog if item.get("article")} == {a["slug"] for a in articles}
 OUT.mkdir(exist_ok=True)
 # Only generated HTML is removed; assets and source documents remain untouched.
 for old in OUT.rglob("*.html"):
@@ -62,7 +69,7 @@ def in_category(a, slug):
     return slug in [a["category"], *a.get("relatedCategories", [])]
 
 def count(kind, slug):
-    return sum(in_category(a, slug) if kind == "topics" else slug in a.get("tags", []) for a in articles)
+    return sum(in_category(a, slug) if kind == "topics" else slug in a.get("tags", []) for a in catalog)
 
 def count_label(number):
     return f'<span class="count">({number})</span>' if number else ''
@@ -74,12 +81,17 @@ def taxonomy(entries, kind):
     ) + '</ul>'
 
 def sidebar(toc=""):
-    feature_links = ''.join(f'<li><a href="{link("articles/"+f["article"]+"/")}#section-{f["section"]}">{e(f["title"])}</a></li>' for f in features)
+    groups = []
+    for c in categories:
+        links = ''.join(f'<li><a href="{link("topics/"+c["slug"]+"/")}#{f["slug"]}">{e(f["title"])}</a></li>' for f in features if f["category"] == c["slug"])
+        groups.append(f'<section><h2>{e(c["title"])}</h2><ul class="sidebar-bullets">{links}</ul></section>')
+    recommended = ''.join(f'<li><a href="{link("articles/"+a["slug"]+"/")}">{e(a["title"])}</a></li>' for a in articles)
     return f'''<aside class="sidebar" aria-label="博客侧栏">
 {('<section class="toc"><h2>文章目录</h2>'+toc+'</section>') if toc else ""}
-<section><h2>专题</h2><ul class="link-list feature-links">{feature_links}</ul></section>
-<section><h2>分类</h2>{taxonomy(categories, "topics")}</section>
-<section><h2>标签</h2>{taxonomy(tags, "tags")}</section>
+<section><h2>博客主要内容</h2>{taxonomy(categories, "topics")}</section>
+{''.join(groups)}
+<section><h2>推荐帖子</h2><ul class="sidebar-bullets">{recommended}</ul></section>
+<section><h2>合集标签</h2>{taxonomy(tags, "tags")}</section>
 </aside>'''
 
 def layout(content, toc=""):
@@ -117,22 +129,57 @@ def empty():
 
 page("", "首页", layout(''.join(row(a, preview=True) for a in articles) if articles else empty()), "首页")
 
-page("articles/", "文章目录", layout(f'''<h1 class="page-title">文章目录</h1>
-<p class="result-count" id="result-count" role="status">{len(articles)} 篇</p><div id="results">{''.join(row(a) for a in articles)}</div>
-<div id="empty" class="empty" {'hidden' if articles else ''}><p id="empty-message">暂无文章</p><button id="clear-search" hidden>清空搜索</button></div>'''), "文章目录")
+def title_row(item, searchable=False):
+    search = [item["title"], item["author"], item["kind"]]
+    search += [c["title"] for c in categories if in_category(item, c["slug"])]
+    search += [f["title"] for f in features if f["slug"] == item["topic"]]
+    search += [t["title"] for t in tags if t["slug"] in item["tags"]]
+    title = e(item["title"])
+    if item.get("article"):
+        title = f'<a href="{link("articles/"+item["article"]+"/")}">{title}</a>'
+    author = f'<span class="entry-author">{e(item["author"])}</span>' if item["author"] else ''
+    tag = next(t for t in tags if t["slug"] in item["tags"])
+    tag_link = f'<a class="entry-tag" href="{link("tags/"+tag["slug"]+"/")}">{e(tag.get("label",tag["title"]))}</a>'
+    if item["author"] == tag.get("label", tag["title"]):
+        author = ''
+    status = '<span class="entry-status readable">可阅读全文</span>' if item.get("article") else '<span class="entry-status">仅标题</span>'
+    kind = f'<span class="entry-kind">{e(item["kind"])}</span>' if item["kind"] != '文章' else ''
+    attrs = f' data-search="{e(" ".join(search),quote=True)}" data-readable="{str(bool(item.get("article"))).lower()}"' if searchable else ''
+    return f'<li id="{item["slug"]}" class="catalog-entry"{attrs}><div class="entry-heading">{title}</div><div class="entry-meta">{author}{tag_link}{kind}{status}</div></li>'
 
-groups = []
-for c in categories:
-    items = [a for a in articles if in_category(a, c["slug"])]
-    item_links = '<ul class="entry-list">' + "".join(f'<li><a href="{link("articles/"+a["slug"]+"/")}">{e(a["title"])}</a><span>{e(a["author"])}</span></li>' for a in items) + '</ul>' if items else ''
-    groups.append(f'<section class="category-group"><h2><a href="{link("topics/"+c["slug"]+"/")}">{e(c["title"])}</a>{count_label(len(items))}</h2>{item_links}</section>')
-page("topics/", "分类与标签", layout('<h1 class="page-title">分类与标签</h1>' + ''.join(groups)), "分类与标签")
+def topic_groups(items, searchable=False, category_headings=True):
+    groups = []
+    for c in categories:
+        selected = [a for a in items if in_category(a, c["slug"])]
+        if not selected:
+            continue
+        subgroups = []
+        for feature in features:
+            entries = [a for a in selected if a["topic"] == feature["slug"]]
+            if not entries:
+                continue
+            level = 3 if category_headings else 2
+            subgroups.append(f'<section class="topic-group" id="{feature["slug"]}" data-filter-group><h{level} class="topic-title">{e(feature["title"])}</h{level}><ul class="catalog-list">'+''.join(title_row(a, searchable) for a in entries)+'</ul></section>')
+        heading = f'<h2 class="category-title"><a href="{link("topics/"+c["slug"]+"/")}">{e(c["title"])}</a></h2>' if category_headings else ''
+        groups.append(f'<section class="category-group" id="{c["slug"]}" data-filter-group>{heading}'+''.join(subgroups)+'</section>')
+    return ''.join(groups)
+
+def category_jumps():
+    return '<div class="category-jumps">'+''.join(f'<a href="#{c["slug"]}">{e(c["title"])}</a>' for c in categories)+'</div>'
+
+page("articles/", "文章目录", layout(f'''<h1 class="page-title">文章目录</h1>
+<div class="catalog-toolbar"><p class="result-count" id="result-count" role="status">{len(catalog)} 个标题 · {len(articles)} 篇可阅读全文</p><label><input type="checkbox" id="readable-only"> 只看已上架</label></div>
+{category_jumps()}<div id="results">{topic_groups(catalog, searchable=True)}</div>
+<div id="empty" class="empty" hidden><p id="empty-message">没有匹配的文章</p><button id="clear-search">清空筛选</button></div>'''), "文章目录")
+
+page("topics/", "分类与标签", layout('<h1 class="page-title">分类与标签</h1>' + category_jumps() + topic_groups(catalog)), "分类与标签")
 
 for entries, kind in [(categories, "topics"), (tags, "tags")]:
     for entry in entries:
-        items = [a for a in articles if in_category(a, entry["slug"])] if kind == "topics" else [a for a in articles if entry["slug"] in a.get("tags", [])]
+        items = [a for a in catalog if in_category(a, entry["slug"])] if kind == "topics" else [a for a in catalog if entry["slug"] in a.get("tags", [])]
+        listing = topic_groups(items, category_headings=False) if kind == "topics" else '<ul class="catalog-list">'+''.join(title_row(a) for a in items)+'</ul>'
         page(kind+"/"+entry["slug"]+"/", entry["title"],
-             layout(f'<h1 class="page-title">{e(entry["title"])}{count_label(len(items))}</h1>' + (''.join(row(a) for a in items) if items else empty())),
+             layout(f'<h1 class="page-title">{e(entry["title"])}{count_label(len(items))}</h1>' + (listing if items else empty())),
              "分类与标签")
 
 def paragraph_html(p):

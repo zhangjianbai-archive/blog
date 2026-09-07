@@ -1,5 +1,62 @@
 [
-  {"title":"我为什么放弃“三语高中”？","article":"klein-my-path-through-new-education","section":2},
-  {"title":"成绩背后，学生究竟学到了什么？","article":"klein-my-path-through-new-education","section":1},
-  {"title":"“独立思考”为何变成“山长说”？","article":"congying-information-cocoon","section":1}
+  {
+    "slug": "outcomes",
+    "category": "teaching",
+    "title": "成绩宣传背后，学生学到了什么？"
+  },
+  {
+    "slug": "admissions",
+    "category": "teaching",
+    "title": "名校与“五条出路”，承诺能兑现吗？"
+  },
+  {
+    "slug": "sports",
+    "category": "teaching",
+    "title": "冠军奖牌意味着什么？"
+  },
+  {
+    "slug": "everyday",
+    "category": "school-life",
+    "title": "学堂里的生活是什么样？"
+  },
+  {
+    "slug": "ethics",
+    "category": "school-life",
+    "title": "师生之间的边界在哪里？"
+  },
+  {
+    "slug": "fees",
+    "category": "school-life",
+    "title": "学费与基金，钱去了哪里？"
+  },
+  {
+    "slug": "control",
+    "category": "authority",
+    "title": "“山长说”如何成为标准答案？"
+  },
+  {
+    "slug": "speech",
+    "category": "authority",
+    "title": "质疑之后，为什么是删帖与围攻？"
+  },
+  {
+    "slug": "statements",
+    "category": "authority",
+    "title": "公开言论前后说了什么？"
+  },
+  {
+    "slug": "system",
+    "category": "authority",
+    "title": "教育理想为何引发争议？"
+  },
+  {
+    "slug": "leaving",
+    "category": "life-after",
+    "title": "为什么选择离开？"
+  },
+  {
+    "slug": "rebuild",
+    "category": "life-after",
+    "title": "离开之后，如何重新开始？"
+  }
 ]
