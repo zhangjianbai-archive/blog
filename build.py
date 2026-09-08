@@ -88,7 +88,7 @@ def sidebar(toc=""):
     recommended = ''.join(f'<li><a href="{link("articles/"+a["slug"]+"/")}">{e(a["title"])}</a></li>' for a in articles)
     return f'''<aside class="sidebar" aria-label="博客侧栏">
 {('<section class="toc"><h2>文章目录</h2>'+toc+'</section>') if toc else ""}
-<section><h2>博客主要内容</h2>{taxonomy(categories, "topics")}</section>
+<section><h2>博客主要内容</h2><ul class="sidebar-bullets"><li>追问教育承诺与实际成果</li><li>呈现学堂里的学习与生活</li><li>讨论权威、服从与精神控制</li><li>记录质疑、删帖与舆论交锋</li><li>回望离开学堂后的经历</li><li>对照张健柏的言论与行动</li></ul></section>
 {''.join(groups)}
 <section><h2>推荐帖子</h2><ul class="sidebar-bullets">{recommended}</ul></section>
 <section><h2>合集标签</h2>{taxonomy(tags, "tags")}</section>
@@ -206,13 +206,13 @@ def inline_markdown(text):
     text = re.sub(r"`([^`]+)`", r"<code>\1</code>", text)
     return text
 
-def introduction():
+def introduction(source="README.md"):
     result, paragraph, list_kind = [], [], None
     def flush():
         if paragraph:
             result.append("<p>" + inline_markdown(" ".join(paragraph)) + "</p>")
             paragraph.clear()
-    for line in (ROOT / "README.md").read_text(encoding="utf-8").splitlines():
+    for line in (ROOT / source).read_text(encoding="utf-8").splitlines():
         heading = re.match(r"^(#{1,6}) (.+)$", line)
         item = re.match(r"^(- |\d+\. )(.+)$", line)
         if not item and list_kind:
@@ -243,7 +243,7 @@ def introduction():
         result.append(f"</{list_kind}>")
     return "".join(result)
 
-page("about/", "关于", layout('<article class="prose introduction">'+introduction()+'</article>'), "关于")
+page("about/", "关于", layout('<article class="prose introduction">'+introduction("content/who-is-zhang-jianbai.md")+introduction("content/blog-introduction.md")+'</article>'), "关于")
 page("404.html", "页面未找到", layout(f'<h1 class="page-title">页面未找到</h1><p><a href="{link()}">返回首页</a></p>'), noindex=True)
 (OUT / ".nojekyll").touch()
 urls = ["", "articles/", "topics/", "about/"] + ["topics/"+c["slug"]+"/" for c in categories] + ["articles/"+a["slug"]+"/" for a in articles]
