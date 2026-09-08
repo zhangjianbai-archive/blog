@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 from html import escape as e, unescape
 from html.parser import HTMLParser
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urlencode
 
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT / "docs"
@@ -42,6 +42,9 @@ for old in OUT.rglob("*.html"):
 def link(path=""):
     return BASE + "/" + path.lstrip("/")
 
+def filter_link(key, value, label, css=""):
+    return f'<a class="{css}" data-filter="{key}" data-value="{e(value, quote=True)}" href="{link("articles/")}?{e(urlencode({key:value}), quote=True)}">{e(label)}</a>'
+
 def page(path, title, body, active="", noindex=False):
     nav = "".join(
         f'<a href="{link(p)}"' + (' aria-current="page"' if active == label else "") + f">{label}</a>"
@@ -76,16 +79,16 @@ def count_label(number):
 
 def taxonomy(entries, kind):
     return '<ul class="link-list '+('category-links' if kind == 'topics' else 'tag-links')+'">' + "".join(
-        f'<li><a href="{link(kind+"/"+t["slug"]+"/")}" title="{e(t["title"], quote=True)}">{e(t.get("label", t["title"]))}</a>{count_label(count(kind,t["slug"]))}</li>'
+        f'<li>{filter_link("category" if kind == "topics" else "tag",t["slug"],t.get("label",t["title"]))}{count_label(count(kind,t["slug"]))}</li>'
         for t in entries
     ) + '</ul>'
 
 def sidebar(toc=""):
     groups = []
     for c in categories:
-        links = ''.join(f'<li><a href="{link("topics/"+c["slug"]+"/")}#{f["slug"]}">{e(f["title"])}</a></li>' for f in features if f["category"] == c["slug"])
+        links = ''.join(f'<li>{filter_link("topic",f["slug"],f["title"])}</li>' for f in features if f["category"] == c["slug"])
         groups.append(f'<section><h2>{e(c["title"])}</h2><ul class="sidebar-bullets">{links}</ul></section>')
-    recommended = ''.join(f'<li><a href="{link("articles/"+a["slug"]+"/")}">{e(a["title"])}</a></li>' for a in articles)
+    recommended = ''.join(f'<li><a href="{link("articles/"+a["slug"]+"/")}">{e(a["title"])}</a></li>' for a in articles[:3])
     return f'''<aside class="sidebar" aria-label="博客侧栏">
 {('<section class="toc"><h2>文章目录</h2>'+toc+'</section>') if toc else ""}
 <section><h2>博客主要内容</h2><ul class="sidebar-bullets"><li>追问教育承诺与实际成果</li><li>呈现学堂里的学习与生活</li><li>讨论权威、服从与精神控制</li><li>记录质疑、删帖与舆论交锋</li><li>回望离开学堂后的经历</li><li>对照张健柏的言论与行动</li></ul></section>
@@ -99,23 +102,23 @@ def layout(content, toc=""):
 
 def metadata(a):
     category = next(c for c in categories if c["slug"] == a["category"])
-    parts = [e(a.get("author", ""))]
+    parts = [filter_link("author",a["author"],a["author"])] if a.get("author") else []
     if a.get("date"):
         parts.append(f'{e(a.get("dateLabel", ""))} <time datetime="{e(a["date"])}">{e(a.get("updatedAt",a["date"]))}</time>')
-    parts.append(f'<a href="{link("topics/"+category["slug"]+"/")}">{e(category["title"])}</a>')
+    parts.append(filter_link("category",category["slug"],category["title"]))
     return '<div class="article-meta">' + '<span class="separator">·</span>'.join(parts) + '</div>'
 
 def article_tags(a):
     selected = [t for t in tags if t["slug"] in a.get("tags", [])]
     return '<div class="post-tags">标签：' + '、'.join(
-        f'<a href="{link("tags/"+t["slug"]+"/")}">{e(t["title"])}</a>' for t in selected
+        filter_link("tag",t["slug"],t["title"]) for t in selected
     ) + '</div>'
 
 def row(a, preview=False):
     text = [a["title"], a.get("author", ""), a.get("summary", "")]
     text += [c["title"] for c in categories if in_category(a, c["slug"])]
     text += [t["title"] for t in tags if t["slug"] in a.get("tags", [])]
-    text += [p if isinstance(p, str) else p["alt"] for s in a["sections"] for p in [s["heading"], *s["paragraphs"]]]
+    text += [p if isinstance(p, str) else p.get("alt", "") for s in a["sections"] for p in [s["heading"], *s["paragraphs"]]]
     search = e(" ".join(text), quote=True)
     url = link("articles/"+a["slug"]+"/")
     excerpt = "".join(f'<p>{e(p)}</p>' for p in a.get("excerpt", [a.get("summary","")])) if preview else ""
@@ -127,7 +130,7 @@ def row(a, preview=False):
 def empty():
     return '<p class="empty">暂无文章</p>'
 
-page("", "首页", layout(''.join(row(a, preview=True) for a in articles) if articles else empty()), "首页")
+page("", "首页", layout((''.join(row(a, preview=True) for a in articles[:5])+f'<a class="more-posts" href="{link("articles/")}?readable=1">全部已上架文章 →</a>') if articles else empty()), "首页")
 
 def title_row(item, searchable=False):
     search = [item["title"], item["author"], item["kind"]]
@@ -137,14 +140,16 @@ def title_row(item, searchable=False):
     title = e(item["title"])
     if item.get("article"):
         title = f'<a href="{link("articles/"+item["article"]+"/")}">{title}</a>'
-    author = f'<span class="entry-author">{e(item["author"])}</span>' if item["author"] else ''
+    author = filter_link("author",item["author"],item["author"],"entry-author") if item["author"] else ''
     tag = next(t for t in tags if t["slug"] in item["tags"])
-    tag_link = f'<a class="entry-tag" href="{link("tags/"+tag["slug"]+"/")}">{e(tag.get("label",tag["title"]))}</a>'
+    tag_link = filter_link("tag",tag["slug"],tag.get("label",tag["title"]),"entry-tag")
     if item["author"] == tag.get("label", tag["title"]):
-        author = ''
+        tag_link = ''
     status = '<span class="entry-status readable">可阅读全文</span>' if item.get("article") else '<span class="entry-status">仅标题</span>'
     kind = f'<span class="entry-kind">{e(item["kind"])}</span>' if item["kind"] != '文章' else ''
     attrs = f' data-search="{e(" ".join(search),quote=True)}" data-readable="{str(bool(item.get("article"))).lower()}"' if searchable else ''
+    if searchable:
+        attrs += f' data-category="{e(item["category"],quote=True)}" data-topic="{e(item["topic"],quote=True)}" data-tag="{e(" ".join(item["tags"]),quote=True)}" data-author="{e(item["author"],quote=True)}"'
     return f'<li id="{item["slug"]}" class="catalog-entry"{attrs}><div class="entry-heading">{title}</div><div class="entry-meta">{author}{tag_link}{kind}{status}</div></li>'
 
 def topic_groups(items, searchable=False, category_headings=True):
@@ -165,14 +170,17 @@ def topic_groups(items, searchable=False, category_headings=True):
     return ''.join(groups)
 
 def category_jumps():
-    return '<div class="category-jumps">'+''.join(f'<a href="#{c["slug"]}">{e(c["title"])}</a>' for c in categories)+'</div>'
+    return '<div class="category-jumps" aria-label="按议题筛选">'+filter_link("category","","全部")+''.join(filter_link("category",c["slug"],c["title"]) for c in categories)+'</div>'
 
 page("articles/", "文章目录", layout(f'''<h1 class="page-title">文章目录</h1>
 <div class="catalog-toolbar"><p class="result-count" id="result-count" role="status">{len(catalog)} 个标题 · {len(articles)} 篇可阅读全文</p><label><input type="checkbox" id="readable-only"> 只看已上架</label></div>
-{category_jumps()}<div id="results">{topic_groups(catalog, searchable=True)}</div>
-<div id="empty" class="empty" hidden><p id="empty-message">没有匹配的文章</p><button id="clear-search">清空筛选</button></div>'''), "文章目录")
+{category_jumps()}<details class="filter-picker"><summary>专题、合集与作者</summary><div class="filter-options"><label>专题<select data-select="topic"><option value="">全部专题</option>{''.join(f'<option value="{f["slug"]}">{e(f["title"])}</option>' for f in features)}</select></label><label>合集<select data-select="tag"><option value="">全部合集</option>{''.join(f'<option value="{t["slug"]}">{e(t["title"])}</option>' for t in tags)}</select></label><label>作者<select data-select="author"><option value="">全部作者</option>{''.join(f'<option value="{e(a,quote=True)}">{e(a)}</option>' for a in sorted({a["author"] for a in catalog if a["author"]}))}</select></label></div></details>
+<div class="active-filters" id="active-filters" aria-label="当前筛选"></div><button id="clear-search" hidden>清空筛选</button>
+<div id="results"><ul class="catalog-list">{''.join(title_row(a, searchable=True) for a in catalog)}</ul></div>
+<div id="empty" class="empty" hidden><p>没有匹配的文章，请调整筛选条件。</p></div><nav class="pagination" aria-label="结果分页"><button id="prev-page">上一页</button><span id="page-count" role="status"></span><button id="next-page">下一页</button></nav>'''), "文章目录")
 
-page("topics/", "分类与标签", layout('<h1 class="page-title">分类与标签</h1>' + category_jumps() + topic_groups(catalog)), "分类与标签")
+topic_index = ''.join('<section class="topic-index"><h2>'+filter_link("category",c["slug"],c["title"])+'</h2><ul>'+''.join('<li>'+filter_link("topic",f["slug"],f["title"])+'</li>' for f in features if f['category']==c['slug'])+'</ul></section>' for c in categories)
+page("topics/", "分类与标签", layout('<h1 class="page-title">分类与标签</h1>'+topic_index+'<section class="topic-index"><h2>合集标签</h2>'+taxonomy(tags,"tags")+'</section>'), "分类与标签")
 
 for entries, kind in [(categories, "topics"), (tags, "tags")]:
     for entry in entries:
@@ -185,6 +193,8 @@ for entries, kind in [(categories, "topics"), (tags, "tags")]:
 def paragraph_html(p):
     if isinstance(p, str):
         return f'<p>{e(p)}</p>'
+    if 'table' in p:
+        return '<div class="table-scroll"><table>'+''.join('<tr>'+''.join('<td>'+e(cell)+'</td>' for cell in row)+'</tr>' for row in p['table'])+'</table></div>'
     assert re.fullmatch(r'assets/articles/[a-z0-9/-]+\.(png|jpg|webp)', p['image'])
     return f'<figure><a href="{link(p["image"])}"><img src="{link(p["image"])}" alt="{e(p["alt"], quote=True)}" loading="lazy"></a></figure>'
 
@@ -194,7 +204,8 @@ for a in articles:
         for i, s in enumerate(a["sections"])
     )
     toc = "".join(f'<a href="#section-{i}">{e(s["heading"])}</a>' for i, s in enumerate(a["sections"]) if s["heading"])
-    article_body = f'<article><h1 class="post-title article-title">{e(a["title"])}</h1>{metadata(a)}<div class="prose">{sections}</div>{article_tags(a)}</article>'
+    back = f'<a class="back-results" href="{link("articles/")}">返回文章目录</a>'
+    article_body = f'<article>{back}<h1 class="post-title article-title">{e(a["title"])}</h1>{metadata(a)}'+(f'<details class="reading-toc"><summary>本文目录</summary>{toc}</details>' if toc else '')+f'<div class="prose">{sections}</div>{article_tags(a)}<div class="reading-footer">{back} · <a href="#main">回到顶部 ↑</a></div></article>'
     page("articles/"+a["slug"]+"/", a["title"], layout(article_body, toc), "文章目录")
 
 def inline_markdown(text):
