@@ -214,6 +214,12 @@ for entries, kind in [(categories, "topics"), (tags, "tags")]:
 def paragraph_html(p):
     if isinstance(p, str):
         return f'<p>{e(p)}</p>'
+    if 'markdown' in p:
+        # Reviewed Markdown supports only explicit inline emphasis. Escaping is
+        # applied first so imported source text cannot create arbitrary HTML.
+        value = e(p['markdown'])
+        value = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', value)
+        return f'<p>{value}</p>'
     if 'table' in p:
         return '<div class="table-scroll"><table>'+''.join('<tr>'+''.join('<td>'+e(cell)+'</td>' for cell in row)+'</tr>' for row in p['table'])+'</table></div>'
     assert re.fullmatch(r'assets/articles/[a-z0-9/-]+\.(png|jpg|webp)', p['image'])
@@ -221,7 +227,7 @@ def paragraph_html(p):
 
 for a in articles:
     sections = "".join(
-        f'<section id="section-{i}">'+(f'<h2>{e(s["heading"])}</h2>' if s["heading"] else '')+('<blockquote>' if s.get('quotation') else '')+''.join(paragraph_html(p) for p in s["paragraphs"])+('</blockquote>' if s.get('quotation') else '')+"</section>"
+        f'<section id="section-{i}">'+(f'<h{min(4,max(2,s.get("level",2)))}>{e(s["heading"])}</h{min(4,max(2,s.get("level",2)))}>' if s["heading"] else '')+('<blockquote>' if s.get('quotation') else '')+''.join(paragraph_html(p) for p in s["paragraphs"])+('</blockquote>' if s.get('quotation') else '')+"</section>"
         for i, s in enumerate(a["sections"])
     )
     toc = "".join(f'<a href="#section-{i}">{e(s["heading"])}</a>' for i, s in enumerate(a["sections"]) if s["heading"]) or '<a href="#section-0">正文</a>'
