@@ -138,7 +138,7 @@ button:disabled{opacity:.4;cursor:default}.topic-index{margin-bottom:28px}.topic
 body{background:var(--paper);line-height:1.8}
 .shell{max-width:1180px;border:0}
 .site-header{padding:20px 28px 16px;border-top:3px solid var(--accent);border-bottom:1px solid #bbb6ac;gap:20px}
-.brand{font-family:"Songti SC","SimSun",serif;font-weight:700;font-size:30px;letter-spacing:2px;color:#201f1c}
+.brand{font-family:"Microsoft YaHei","PingFang SC",sans-serif;font-weight:700;font-size:29px;letter-spacing:1px;color:#201f1c}
 .header-search{margin-top:9px;width:280px}
 input[type="search"]{background:transparent;border-color:#bbb8b0}
 button{background:#f0eee8;border-color:#bbb8b0}
@@ -146,12 +146,14 @@ button{background:#f0eee8;border-color:#bbb8b0}
 .blog-layout{grid-template-columns:minmax(0,1fr) 280px;gap:32px}
 .main-column{padding:25px 0 44px 28px}
 .sidebar{background:transparent;border:0;padding:26px 28px 28px 0;font-size:14px}
-.sidebar h2{border:0;color:#202020;font-size:16px;padding:0;margin-bottom:7px;line-height:1.5}
-.sidebar section+section{margin-top:24px}
+.sidebar h2{border:0;color:#202020;font-size:17px;font-weight:700;padding:0;margin-bottom:8px;line-height:1.5}
+.sidebar section+section{margin-top:30px}
+.sidebar-image-slot{aspect-ratio:4/3;width:100%;max-width:280px;margin:0 0 24px;background:#eeece6;border:1px solid #d9d5cc;display:grid;place-items:center;color:#969087}
+.sidebar-image-slot img{display:block;width:100%;height:100%;object-fit:cover}
 .sidebar-bullets{margin-top:5px;line-height:1.65;padding-left:18px}
 .sidebar-bullets li{padding:3px 0}
 .sidebar-bullets li::marker{color:#333}
-.post{border:0;margin-bottom:25px;padding-bottom:0}
+.post{border:0;margin-bottom:36px;padding-bottom:0}
 .post-title,.post:first-child .post-title{font-size:23px;line-height:1.5;font-weight:700;margin-bottom:6px}
 .post-title a{color:var(--link)}
 .post-title a:visited{color:#59476b}

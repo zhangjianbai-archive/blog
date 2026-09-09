@@ -106,6 +106,7 @@ def sidebar():
         links = ''.join(f'<li><a href="{link("articles/"+a["slug"]+"/")}">{e(a["title"])}</a></li>' for a in selected)
         groups.append(f'<section><h2>{e(c["title"])}</h2><ul class="sidebar-bullets">{links}</ul></section>')
     return f'''<aside class="sidebar" aria-label="博客侧栏">
+<div class="sidebar-image-slot" role="img" aria-label="预留博客图片位置"><svg aria-hidden="true" width="36" height="30" viewBox="0 0 36 30" fill="none"><rect x="1" y="1" width="34" height="28" stroke="currentColor"/><circle cx="11" cy="9" r="3" stroke="currentColor"/><path d="M2 25L13 15L20 21L26 13L34 23" stroke="currentColor"/></svg></div>
 <section><h2>博客主要内容</h2><ul class="sidebar-bullets"><li>追问教育承诺与实际成果</li><li>呈现学堂里的学习与生活</li><li>讨论权威、服从与精神控制</li><li>记录质疑、删帖与舆论交锋</li><li>回望离开学堂后的经历</li><li>对照张健柏的言论与行动</li></ul></section>
 {''.join(groups)}
 <details class="sidebar-tags"><summary>合集标签</summary>{taxonomy(tags, "tags")}</details>
