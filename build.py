@@ -119,7 +119,7 @@ def summary_html(a):
     points = presentation.get(a["slug"], {}).get("points", [])
     if not points:
         return ""
-    return '<section class="article-summary"><h2>文章总结</h2><p class="summary-credit">编辑摘要 · 依据本文</p><ul>'+''.join(f'<li>{e(point["text"])} <a href="#section-{point["section"]}" aria-label="阅读对应段落">↗</a></li>' for point in points)+'</ul></section>'
+    return '<section class="article-summary"><h2>原文提要</h2><p class="summary-credit">摘自原文</p><ul>'+''.join(f'<li>{e(point["text"])} <a href="#section-{point["section"]}" aria-label="阅读对应段落">↗</a></li>' for point in points)+'</ul></section>'
 
 def metadata(a):
     category = next(c for c in categories if c["slug"] == a["category"])

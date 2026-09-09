@@ -5,8 +5,9 @@ visible paragraph text and records Word bold runs, paragraph styles, hyperlinks,
 and image anchors so a human can decide the Markdown structure.
 """
 import json
+import hashlib
 import sys
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from zipfile import ZipFile
 import xml.etree.ElementTree as ET
 
@@ -46,6 +47,10 @@ def main(source_dir, document_name, output):
     with ZipFile(Path(source_dir) / document_name) as archive:
         body = ET.fromstring(archive.read("word/document.xml")).find("w:body", NS)
         paragraphs = body.findall("w:p", NS)
+        relationships = {
+            node.attrib["Id"]: node.attrib
+            for node in ET.fromstring(archive.read("word/_rels/document.xml.rels"))
+        }
         packet = []
         for position, item in enumerate(entries):
             title_ids = set(item["source"]["titleParagraphs"])
@@ -59,6 +64,13 @@ def main(source_dir, document_name, output):
                 value = visible_text(paragraph)
                 embeds = [node.get(f"{{{NS['r']}}}embed") for node in paragraph.findall(".//a:blip", NS)]
                 embeds += [node.get(f"{{{NS['r']}}}id") for node in paragraph.findall(".//v:imagedata", NS)]
+                images = []
+                for relationship_id in [value for value in embeds if value]:
+                    target = relationships[relationship_id]["Target"]
+                    member = target.lstrip("/") if target.startswith("/") else str(PurePosixPath("word") / target)
+                    data = archive.read(member)
+                    suffix = Path(member).suffix.lower().replace(".jpeg", ".jpg")
+                    images.append(f"assets/articles/docx/{hashlib.sha256(data).hexdigest()[:24]}{suffix}")
                 if not value.strip() and not any(embeds):
                     continue
                 style = paragraph.find("w:pPr/w:pStyle", NS)
@@ -67,7 +79,7 @@ def main(source_dir, document_name, output):
                     "style": style.get(f"{{{NS['w']}}}val") if style is not None else "",
                     "text": value,
                     "runs": run_fragments(paragraph),
-                    "images": [value for value in embeds if value],
+                    "images": images,
                 })
             packet.append({
                 "slug": item["slug"],

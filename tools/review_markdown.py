@@ -28,10 +28,12 @@ def create(packet_path, config_path, output_path):
     lines = ["<!--ARCHIVE-META", json.dumps(meta, ensure_ascii=False, indent=2), "-->", "", f"# {item['title']}", "", "<!-- 原文开始 -->", ""]
     for block in item["blocks"]:
         text = marked(block)
-        if block["paragraph"] in headings:
+        if text and block["paragraph"] in headings:
             lines.extend(["#" * headings[block["paragraph"]] + " " + text, ""])
-        else:
+        elif text:
             lines.extend([text, ""])
+        for image in block["images"]:
+            lines.extend([f"![{item['title']}：原文配图](/blog/{image})", ""])
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text("\n".join(lines), encoding="utf-8")
@@ -41,11 +43,23 @@ def create(packet_path, config_path, output_path):
 def verify(markdown_path, source_item):
     text = Path(markdown_path).read_text(encoding="utf-8").split("<!-- 原文开始 -->", 1)[1]
     paragraphs = []
+    markdown_paragraphs = []
+    images = []
     for part in re.split(r"\n\s*\n", text.strip()):
         value = re.sub(r"^#{2,4} ", "", part)
-        paragraphs.append(plain(value))
+        if value.startswith("!["):
+            image = re.fullmatch(r"!\[.*\]\(/blog/(assets/articles/docx/[a-z0-9]+\.(?:png|jpg|webp))\)", value)
+            assert image, "Invalid reviewed image"
+            images.append(image.group(1))
+        else:
+            markdown_paragraphs.append(value)
+            paragraphs.append(plain(value))
     expected = [block["text"] for block in source_item["blocks"] if block["text"].strip()]
     assert paragraphs == expected, "Reviewed Markdown changed source text"
+    expected_markdown = [marked(block) for block in source_item["blocks"] if block["text"].strip()]
+    assert markdown_paragraphs == expected_markdown, "Reviewed Markdown changed source bold formatting"
+    expected_images = [image for block in source_item["blocks"] for image in block["images"]]
+    assert images == expected_images, "Reviewed Markdown changed source image order"
 
 
 def apply(markdown_path):
@@ -58,6 +72,10 @@ def apply(markdown_path):
         heading = re.match(r"^(#{2,4}) (.*)$", part, re.S)
         if heading:
             sections.append({"heading": plain(heading.group(2)), "paragraphs": [], "level": len(heading.group(1))})
+        elif part.startswith("!["):
+            image = re.fullmatch(r"!\[(.*)\]\(/blog/(assets/articles/docx/[a-z0-9]+\.(?:png|jpg|webp))\)", part)
+            assert image, "Invalid reviewed image"
+            sections[-1]["paragraphs"].append({"image": image.group(2), "alt": image.group(1)})
         else:
             sections[-1]["paragraphs"].append({"markdown": part})
     articles_path = ROOT / "content/articles.json"
