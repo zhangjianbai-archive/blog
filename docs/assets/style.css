@@ -132,3 +132,47 @@ button:disabled{opacity:.4;cursor:default}.topic-index{margin-bottom:28px}.topic
 .author-profile{padding-bottom:24px;margin-bottom:26px;border-bottom:1px solid var(--line)}
 .author-profile h2{font-size:21px;margin:0 0 12px}.author-profile p{font-size:15px;line-height:1.9;margin:10px 0}
 .author-profile ul{padding-left:20px;font-size:14px;line-height:1.8}.author-profile li{margin:7px 0}.author-profile .author-more{font-size:13px}
+
+/* Traditional text-led blog: one paper surface and distinct editorial links. */
+:root{--paper:#faf9f6;--side:#faf9f6;--ink:#202020;--muted:#66635e;--line:#dedbd4;--link:#244b78;--accent:#892e2b}
+body{background:var(--paper);line-height:1.8}
+.shell{max-width:1180px;border:0}
+.site-header{padding:20px 28px 16px;border-top:3px solid var(--accent);border-bottom:1px solid #bbb6ac;gap:20px}
+.brand{font-family:"Songti SC","SimSun",serif;font-weight:700;font-size:30px;letter-spacing:2px;color:#201f1c}
+.header-search{margin-top:9px;width:280px}
+input[type="search"]{background:transparent;border-color:#bbb8b0}
+button{background:#f0eee8;border-color:#bbb8b0}
+.site-header nav{font-size:14px;gap:10px 20px}
+.blog-layout{grid-template-columns:minmax(0,1fr) 280px;gap:32px}
+.main-column{padding:25px 0 44px 28px}
+.sidebar{background:transparent;border:0;padding:26px 28px 28px 0;font-size:14px}
+.sidebar h2{border:0;color:#202020;font-size:16px;padding:0;margin-bottom:7px;line-height:1.5}
+.sidebar section+section{margin-top:24px}
+.sidebar-bullets{margin-top:5px;line-height:1.65;padding-left:18px}
+.sidebar-bullets li{padding:3px 0}
+.sidebar-bullets li::marker{color:#333}
+.post{border:0;margin-bottom:25px;padding-bottom:0}
+.post-title,.post:first-child .post-title{font-size:23px;line-height:1.5;font-weight:700;margin-bottom:6px}
+.post-title a{color:var(--link)}
+.post-title a:visited{color:#59476b}
+.post-title a:hover{color:var(--accent);text-decoration:underline;text-underline-offset:4px}
+.article-meta{margin-bottom:9px;font-size:12px;line-height:1.7}
+.excerpt{font-size:15px;line-height:1.8;max-width:none}
+.excerpt p{margin-bottom:9px}
+.post-footer{gap:5px 16px}
+.read-more{font-size:13px;text-decoration:underline;text-underline-offset:3px}
+.post-tags{font-size:12px}
+.article-title{font-size:26px;line-height:1.5;color:var(--ink)}
+.prose{font-size:16px;line-height:1.9}
+.prose h2{font-size:22px;line-height:1.5;margin:30px 0 14px}
+.prose h3{font-size:19px;line-height:1.6;margin:24px 0 12px}
+.prose h4{font-size:17px;line-height:1.6;margin:22px 0 10px}
+.prose p{margin:16px 0}
+.page-title{padding-bottom:12px;margin-bottom:18px}
+.catalog-entry{padding:9px 0;border-bottom:0}
+.entry-heading{font-size:16px;line-height:1.65}
+.category-group{border:0}
+.category-group .category-title{border:0;padding-bottom:0}
+footer{margin:0 28px;padding:14px 0}
+@media(max-width:850px){.blog-layout{grid-template-columns:minmax(0,1fr) 235px;gap:24px}.site-header{padding-inline:22px}.main-column{padding-left:22px}.sidebar{padding-right:22px}.brand{font-size:27px}.header-search{width:250px}}
+@media(max-width:650px){.site-header{padding:17px 18px 8px}.brand{font-size:27px}.header-search{width:100%;max-width:320px}.site-header nav{margin-top:12px;gap:3px 16px}.blog-layout{grid-template-columns:1fr;gap:0}.main-column{padding:22px 18px 32px}.sidebar{padding:22px 18px;border-top:1px solid var(--line)}.post-title,.post:first-child .post-title{font-size:21px}.post{margin-bottom:25px}.excerpt{font-size:16px;line-height:1.85}.article-title{font-size:23px}.reading-layout .article-sidebar{padding:16px 18px}footer{margin:0 18px}}
