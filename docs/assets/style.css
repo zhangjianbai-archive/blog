@@ -128,3 +128,7 @@ button:disabled{opacity:.4;cursor:default}.topic-index{margin-bottom:28px}.topic
 .article-sidebar .toc a{font-size:13px;line-height:1.7;margin:4px 0}
 .site-header nav{flex-wrap:wrap;gap:12px 20px}.site-header nav a{white-space:nowrap}
 @media(max-width:650px){.post-title{font-size:21px}.post:first-child .post-title{font-size:23px}.site-header nav{gap:6px 16px}.reading-layout .article-sidebar{grid-row:1;border-bottom:1px solid var(--line);padding:16px 20px}.article-sidebar .toc{display:block}.article-sidebar .toc a{padding:2px 0}.article-sidebar section+section{margin-top:16px}}
+
+.author-profile{padding-bottom:24px;margin-bottom:26px;border-bottom:1px solid var(--line)}
+.author-profile h2{font-size:21px;margin:0 0 12px}.author-profile p{font-size:15px;line-height:1.9;margin:10px 0}
+.author-profile ul{padding-left:20px;font-size:14px;line-height:1.8}.author-profile li{margin:7px 0}.author-profile .author-more{font-size:13px}

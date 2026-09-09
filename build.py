@@ -51,7 +51,7 @@ def filter_link(key, value, label, css=""):
 def page(path, title, body, active="", noindex=False):
     nav = "".join(
         f'<a href="{link(p)}"' + (' aria-current="page"' if active == label else "") + f">{label}</a>"
-        for label, p in [("首页", ""), ("张健柏是谁？", "who-is-zhang-jianbai/"), ("文章目录", "articles/"), ("分类", "topics/"), ("关于", "about/")]
+        for label, p in [("首页", ""), ("张健柏是谁？", "who-is-zhang-jianbai/"), ("文章目录", "articles/"), ("分类", "topics/"), ("作者介绍", "authors/"), ("关于", "about/")]
     )
     robots = '<meta name="robots" content="noindex,follow">' if noindex else ""
     html = f'''<!doctype html>
@@ -279,9 +279,17 @@ def introduction(source="README.md"):
 
 page("who-is-zhang-jianbai/", "张健柏是谁？", layout('<article class="prose introduction">'+introduction("content/who-is-zhang-jianbai.md")+'</article>'), "张健柏是谁？")
 page("about/", "关于", layout('<article class="prose introduction">'+introduction("content/blog-introduction.md")+'</article>'), "关于")
+author_profiles = json.loads((ROOT / "content/authors.json").read_text(encoding="utf-8"))
+author_blocks = []
+for profile in author_profiles:
+    selected = [a for a in articles if a.get("author") == profile["name"]]
+    assert selected, "Author profile must have matching articles"
+    examples = ''.join(f'<li><a href="{link("articles/"+a["slug"]+"/")}">{e(a["title"])}</a></li>' for a in selected[:2])
+    author_blocks.append(f'<section class="author-profile"><h2>{e(profile["name"])}</h2><p>{e(profile["introduction"])}</p><ul>{examples}</ul><p class="author-more">{filter_link("author",profile["name"],f"查看全部文章（{len(selected)}） →")}</p></section>')
+page("authors/", "作者介绍", layout('<h1 class="page-title">作者介绍</h1><div class="author-profiles">'+''.join(author_blocks)+'</div>'), "作者介绍")
 page("404.html", "页面未找到", layout(f'<h1 class="page-title">页面未找到</h1><p><a href="{link()}">返回首页</a></p>'), noindex=True)
 (OUT / ".nojekyll").touch()
-urls = ["", "articles/", "topics/", "about/", "who-is-zhang-jianbai/"] + ["topics/"+c["slug"]+"/" for c in categories] + ["articles/"+a["slug"]+"/" for a in articles]
+urls = ["", "articles/", "topics/", "about/", "who-is-zhang-jianbai/", "authors/"] + ["topics/"+c["slug"]+"/" for c in categories] + ["articles/"+a["slug"]+"/" for a in articles]
 urls += ["tags/"+t["slug"]+"/" for t in tags]
 (OUT/"sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+''.join(f'<url><loc>{ORIGIN}{link(p)}</loc></url>' for p in urls)+"</urlset>", encoding="utf-8")
 
