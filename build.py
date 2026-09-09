@@ -46,17 +46,21 @@ def link(path=""):
     return BASE + "/" + path.lstrip("/")
 
 def filter_link(key, value, label, css=""):
-    return f'<a class="{css}" data-filter="{key}" data-value="{e(value, quote=True)}" href="{link("articles/")}?{e(urlencode({key:value}), quote=True)}">{e(label)}</a>'
+    target = link(('topics/' if key == 'category' else 'tags/')+value+'/') if value and key in {'category','tag'} else link('articles/')+'?'+urlencode({key:value})
+    return f'<a class="{css}" data-filter="{key}" data-value="{e(value, quote=True)}" href="{e(target, quote=True)}">{e(label)}</a>'
 
-def page(path, title, body, active="", noindex=False):
+def page(path, title, body, active="", noindex=False, description=None, schema=None):
     nav = "".join(
         f'<a href="{link(p)}"' + (' aria-current="page"' if active == label else "") + f">{label}</a>"
         for label, p in [("首页", ""), ("张健柏是谁？", "who-is-zhang-jianbai/"), ("文章目录", "articles/"), ("分类", "topics/"), ("作者介绍", "authors/"), ("关于", "about/")]
     )
     robots = '<meta name="robots" content="noindex,follow">' if noindex else ""
+    if description is None:
+        description = '张健柏档案馆：收录关于张健柏、张清一与今日学堂的文章、亲历记录和评论，可按议题、作者及合集阅读。' if not path else title+'：'+NAME+'的文章与相关内容。'
+    structured = '<script type="application/ld+json">'+json.dumps(schema,ensure_ascii=False).replace('<','\\u003c')+'</script>' if schema else ''
     html = f'''<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{e(title)} · {NAME}</title><meta name="description" content="{e(title)}">
+<title>{e(title)} · {NAME}</title><meta name="description" content="{e(description)}">{structured}
 <link rel="canonical" href="{ORIGIN}{link(path)}"><meta name="site-version" content="{VERSION}"><meta name="theme-color" content="#e9ebed">
 {robots}<link rel="icon" href="data:,">
 <link rel="stylesheet" href="{link('assets/style.css')}?v={VERSION}"><script src="{link('assets/search.js')}?v={VERSION}" defer></script></head>
@@ -199,7 +203,14 @@ page("articles/", "文章目录", layout(f'''<h1 class="page-title">文章目录
 {category_jumps()}<details class="filter-picker"><summary>专题、合集与作者</summary><div class="filter-options"><label>专题<select data-select="topic"><option value="">全部专题</option>{''.join(f'<option value="{f["slug"]}">{e(f["title"])}</option>' for f in features)}</select></label><label>合集<select data-select="tag"><option value="">全部合集</option>{''.join(f'<option value="{t["slug"]}">{e(t["title"])}</option>' for t in tags)}</select></label><label>作者<select data-select="author"><option value="">全部作者</option>{''.join(f'<option value="{e(a,quote=True)}">{e(a)}</option>' for a in sorted({a["author"] for a in catalog if a["author"]}))}</select></label></div></details>
 <div class="active-filters" id="active-filters" aria-label="当前筛选"></div><button id="clear-search" hidden>清空筛选</button>
 <div id="results"><ul class="catalog-list">{''.join(title_row(a, searchable=True) for a in catalog)}</ul></div>
-<div id="empty" class="empty" hidden><p>没有匹配的文章，请调整筛选条件。</p></div><nav class="pagination" aria-label="结果分页"><button id="prev-page">上一页</button><span id="page-count" role="status"></span><button id="next-page">下一页</button></nav>'''), "文章目录")
+<div id="empty" class="empty" hidden><p>没有匹配的文章，请调整筛选条件。</p></div><nav class="pagination" aria-label="结果分页"><a id="prev-page" aria-disabled="true">上一页</a><span id="page-count" role="status"></span><a id="next-page" href="{link('articles/page/2/')}">下一页</a></nav>'''), "文章目录")
+
+for number in range(2, (len(catalog)+19)//20+1):
+    prev_path = 'articles/' if number == 2 else f'articles/page/{number-1}/'
+    paging = f'<a href="{link(prev_path)}">上一页</a>'
+    if number*20 < len(catalog):
+        paging += f'<a href="{link(f"articles/page/{number+1}/")}">下一页</a>'
+    page(f'articles/page/{number}/',f'文章目录 · 第 {number} 页',layout(f'<h1 class="page-title">文章目录 · 第 {number} 页</h1><ul class="catalog-list">'+''.join(title_row(a) for a in catalog[(number-1)*20:number*20])+f'</ul><nav class="pagination" aria-label="结果分页">{paging}</nav>'),'文章目录')
 
 topic_index = ''.join('<section class="topic-index"><h2>'+filter_link("category",c["slug"],c["title"])+'</h2><ul>'+''.join('<li>'+filter_link("topic",f["slug"],f["title"])+'</li>' for f in features if f['category']==c['slug'])+'</ul></section>' for c in categories)
 page("topics/", "分类", layout('<h1 class="page-title">分类</h1>'+topic_index+'<section class="topic-index"><h2>合集标签</h2>'+taxonomy(tags,"tags")+'</section>'), "分类")
@@ -212,15 +223,42 @@ for entries, kind in [(categories, "topics"), (tags, "tags")]:
              layout(f'<h1 class="page-title">{e(entry["title"])}{count_label(len(items))}</h1>' + (listing if items else empty())),
              "分类")
 
+def source_links(text):
+    return re.sub(r'https?://(?:(?!&quot;|&#x27;)[^\s<>\u3000\u3002\uff0c\uff09\u201d\u201c)])+',lambda m:'<a href="'+e(unescape(m.group()),quote=True)+'">'+m.group()+'</a>',text)
+
+def author_id(name):
+    return 'author-'+hashlib.sha256(name.encode('utf-8')).hexdigest()[:12]
+
+def series_html(article):
+    match=re.match(r'^(.+?)之([一二三四五六七八九十]+)[：:]',article['title'])
+    if not match:return ''
+    members=[x for x in articles if x.get('author')==article.get('author') and re.match('^'+re.escape(match[1])+r'之[一二三四五六七八九十]+[：:]',x['title'])]
+    position=next(i for i,x in enumerate(members) if x['slug']==article['slug'])
+    links=[]
+    for index,label in [(position-1,'上一篇'),(position+1,'下一篇')]:
+        if 0<=index<len(members):
+            other=members[index]
+            links.append(f'<a href="{link("articles/"+other["slug"]+"/")}">{label}：{e(other["title"])}</a>')
+    return '<nav class="series-navigation" aria-label="系列文章">'+''.join(links)+'</nav>' if links else ''
+
+def related_html(article):
+    item = next((x for x in catalog if x.get('article') == article['slug']), {})
+    def score(other):
+        other_item = next((x for x in catalog if x.get('article') == other['slug']), {})
+        return (6 if item.get('topic') and item.get('topic') == other_item.get('topic') else 0)+(3 if article['category']==other['category'] else 0)+(1 if article.get('author')==other.get('author') else 0)
+    matches=sorted([x for x in articles if x['slug']!=article['slug'] and score(x)>0],key=score,reverse=True)[:4]
+    if not matches:return ''
+    return '<section class="related-posts"><h2>相关文章</h2><ul>'+''.join(f'<li><a href="{link("articles/"+x["slug"]+"/")}">{e(x["title"])}</a></li>' for x in matches)+'</ul></section>'
+
 def paragraph_html(p):
     if isinstance(p, str):
-        return f'<p>{e(p)}</p>'
+        return f'<p>{source_links(e(p))}</p>'
     if 'markdown' in p:
         # Reviewed Markdown supports only explicit inline emphasis. Escaping is
         # applied first so imported source text cannot create arbitrary HTML.
         value = e(p['markdown'])
         value = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', value)
-        return f'<p>{value}</p>'
+        return f'<p>{source_links(value)}</p>'
     if 'table' in p:
         return '<div class="table-scroll"><table>'+''.join('<tr>'+''.join('<td>'+e(cell)+'</td>' for cell in row)+'</tr>' for row in p['table'])+'</table></div>'
     assert re.fullmatch(r'assets/articles/[a-z0-9/-]+\.(png|jpg|webp)', p['image'])
@@ -236,7 +274,16 @@ for a in articles:
     reading_side = '<aside class="sidebar article-sidebar" aria-label="本文侧栏"><section class="toc"><h2>目录</h2>'+toc+'</section>'+summary+'</aside>'
     back = f'<a class="back-results" href="{link("articles/")}">返回文章目录</a>'
     article_body = f'<article>{back}<h1 class="post-title article-title">{e(a["title"])}</h1>{metadata(a)}'+f'<div class="prose">{sections}</div>{article_tags(a)}<div class="reading-footer">{back} · <a href="#main">回到顶部 ↑</a></div></article>'
-    page("articles/"+a["slug"]+"/", a["title"], layout(article_body, reading_side), "文章目录")
+    article_body += series_html(a)+related_html(a)
+    url=ORIGIN+link('articles/'+a['slug']+'/')
+    description=' '.join(a.get('excerpt',[])) or a['title']
+    schema={'@context':'https://schema.org','@type':'BlogPosting','headline':a['title'],'url':url,'mainEntityOfPage':url,'description':description,'inLanguage':'zh-CN','author':{'@type':'Person','name':a['author']}}
+    known_authors=json.loads((ROOT/'content/authors.json').read_text(encoding='utf-8'))
+    if any(profile['name']==a['author'] for profile in known_authors):
+        schema['author']['url']=ORIGIN+link('authors/')+'#'+author_id(a['author'])
+    # Imported dates do not reliably distinguish original publication from edits.
+    # Omit them until individually verified instead of inventing timestamps.
+    page("articles/"+a["slug"]+"/", a["title"], layout(article_body, reading_side), "文章目录",description=description,schema=schema)
 
 def inline_markdown(text):
     # Render the Markdown constructs used in the original introduction, without editing its source.
@@ -292,12 +339,13 @@ for profile in author_profiles:
     selected = [a for a in articles if a.get("author") == profile["name"]]
     assert selected, "Author profile must have matching articles"
     examples = ''.join(f'<li><a href="{link("articles/"+a["slug"]+"/")}">{e(a["title"])}</a></li>' for a in selected[:2])
-    author_blocks.append(f'<section class="author-profile"><h2>{e(profile["name"])}</h2><p>{e(profile["introduction"])}</p><ul>{examples}</ul><p class="author-more">{filter_link("author",profile["name"],f"查看全部文章（{len(selected)}） →")}</p></section>')
+    author_blocks.append(f'<section class="author-profile" id="{author_id(profile["name"])}"><h2>{e(profile["name"])}</h2><p>{e(profile["introduction"])}</p><ul>{examples}</ul><p class="author-more">{filter_link("author",profile["name"],f"查看全部文章（{len(selected)}） →")}</p></section>')
 page("authors/", "作者介绍", layout('<h1 class="page-title">作者介绍</h1><div class="author-profiles">'+''.join(author_blocks)+'</div>'), "作者介绍")
 page("404.html", "页面未找到", layout(f'<h1 class="page-title">页面未找到</h1><p><a href="{link()}">返回首页</a></p>'), noindex=True)
 (OUT / ".nojekyll").touch()
 urls = ["", "articles/", "topics/", "about/", "who-is-zhang-jianbai/", "authors/"] + ["topics/"+c["slug"]+"/" for c in categories] + ["articles/"+a["slug"]+"/" for a in articles]
 urls += ["tags/"+t["slug"]+"/" for t in tags]
+urls += [f'articles/page/{n}/' for n in range(2,(len(catalog)+19)//20+1)]
 (OUT/"sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+''.join(f'<url><loc>{ORIGIN}{link(p)}</loc></url>' for p in urls)+"</urlset>", encoding="utf-8")
 
 class Links(HTMLParser):

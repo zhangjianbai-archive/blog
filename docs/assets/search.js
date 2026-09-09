@@ -11,8 +11,6 @@
         a.href=u.href;a.textContent='返回筛选结果';a.addEventListener('click',()=>{try{sessionStorage.setItem('restore-results','1');}catch{}});
       });
     }
-    const old=location.pathname.match(/^\/blog\/(topics|tags)\/([^/]+)\/$/);
-    if(old){const u=new URL(base,location.origin);if(version)u.searchParams.set('v',version);u.searchParams.set(old[1]==='tags'?'tag':'category',old[2]);if(old[1]==='topics'&&location.hash)u.searchParams.set('topic',location.hash.slice(1));location.replace(u.href);}
     return;
   }
   const rows=[...results.querySelectorAll('.catalog-entry')], readable=document.querySelector('#readable-only'), clear=document.querySelector('#clear-search'), chips=document.querySelector('#active-filters');
@@ -35,7 +33,11 @@
     chips.replaceChildren();keys.filter(k=>state.get(k)).forEach(k=>{const b=document.createElement('button'),t=k==='readable'?labels[k]:`${labels[k]}：${label(k,state.get(k))}`;b.textContent=t+' ×';b.setAttribute('aria-label','取消'+t);b.addEventListener('click',()=>change(k,''));chips.append(b);});
     clear.hidden=!keys.some(k=>state.get(k));document.querySelector('#result-count').textContent=`${matched.length} 个标题 · ${matched.filter(r=>r.dataset.readable==='true').length} 篇可阅读全文`;
     document.querySelector('#empty').hidden=matched.length!==0;document.querySelector('#page-count').textContent=`${page} / ${pages}`;
-    prev.disabled=page===1;next.disabled=page===pages;document.querySelector('.pagination').hidden=pages===1;
+    for(const [el,n,disabled] of [[prev,page-1,page===1],[next,page+1,page===pages]]){
+      el.setAttribute('aria-disabled',String(disabled));
+      if(disabled){el.removeAttribute('href');}else{const params=new URLSearchParams(state);params.set('page',String(n));el.href=keys.some(k=>state.get(k))?base+'?'+params:(n===1?base:base+'page/'+n+'/');}
+    }
+    document.querySelector('.pagination').hidden=pages===1;
     if(mode){const u=new URL(base,location.origin);u.search=state.toString();history[mode](null,'',u);}
   }
   function change(k,v,mode='pushState'){
@@ -54,8 +56,7 @@
   document.querySelector('#search-form').addEventListener('submit',e=>{e.preventDefault();change('q',field.value,'replaceState');});
   readable.addEventListener('change',()=>change('readable',readable.checked?'1':''));
   clear.addEventListener('click',()=>{state=new URLSearchParams();render('pushState');});
-  prev.addEventListener('click',()=>{change('page',String((Number(state.get('page'))||1)-1));document.querySelector('.page-title').scrollIntoView();});
-  next.addEventListener('click',()=>{change('page',String((Number(state.get('page'))||1)+1));document.querySelector('.page-title').scrollIntoView();});
+  for(const [el,delta] of [[prev,-1],[next,1]])el.addEventListener('click',e=>{if(e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;e.preventDefault();if(el.getAttribute('aria-disabled')==='true')return;change('page',String((Number(state.get('page'))||1)+delta));document.querySelector('.page-title').scrollIntoView();});
   addEventListener('popstate',()=>{state=new URLSearchParams(location.search);render();});render('replaceState');
   try{if(sessionStorage.getItem('restore-results')==='1'){sessionStorage.removeItem('restore-results');if(saved&&new URL(saved.url).href===location.href)requestAnimationFrame(()=>scrollTo({top:saved.scroll,behavior:'instant'}));}}catch{}
 })();
