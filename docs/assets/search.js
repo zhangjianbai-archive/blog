@@ -1,4 +1,5 @@
 (() => {
+  const version=document.querySelector('meta[name="site-version"]')?.content;
   const base='/blog/articles/', results=document.querySelector('#results'), field=document.querySelector('#search');
   const keys=['q','category','topic','tag','author','readable'];
   const normalize=t=>t.normalize('NFKC').toLocaleLowerCase().trim();
@@ -11,7 +12,7 @@
       });
     }
     const old=location.pathname.match(/^\/blog\/(topics|tags)\/([^/]+)\/$/);
-    if(old){const u=new URL(base,location.origin);u.searchParams.set(old[1]==='tags'?'tag':'category',old[2]);if(old[1]==='topics'&&location.hash)u.searchParams.set('topic',location.hash.slice(1));location.replace(u.href);}
+    if(old){const u=new URL(base,location.origin);if(version)u.searchParams.set('v',version);u.searchParams.set(old[1]==='tags'?'tag':'category',old[2]);if(old[1]==='topics'&&location.hash)u.searchParams.set('topic',location.hash.slice(1));location.replace(u.href);}
     return;
   }
   const rows=[...results.querySelectorAll('.catalog-entry')], readable=document.querySelector('#readable-only'), clear=document.querySelector('#clear-search'), chips=document.querySelector('#active-filters');
@@ -22,6 +23,7 @@
   const labels={q:'搜索',category:'议题',topic:'专题',tag:'合集',author:'作者',readable:'只看已上架'};
   function label(k,v){return [...document.querySelectorAll(`[data-select="${k}"] option`)].find(o=>o.value===v)?.textContent||[...document.querySelectorAll(`[data-filter="${k}"]`)].find(a=>a.dataset.value===v)?.textContent||v;}
   function render(mode){
+    if(version)state.set("v",version);
     const terms=normalize(state.get('q')||'').split(/\s+/).filter(Boolean);
     const matched=rows.filter(r=>terms.every(t=>normalize(r.dataset.search).includes(t))&&(!state.get('readable')||r.dataset.readable==='true')&&['category','topic','author'].every(k=>!state.get(k)||r.dataset[k]===state.get(k))&&(!state.get('tag')||r.dataset.tag.split(' ').includes(state.get('tag'))));
     const pages=Math.max(1,Math.ceil(matched.length/size)),page=Math.max(1,Math.min(pages,parseInt(state.get('page'),10)||1));

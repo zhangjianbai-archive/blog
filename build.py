@@ -1,5 +1,6 @@
 """Build the blog with Python's standard library."""
 import json
+import hashlib
 import re
 from pathlib import Path
 from html import escape as e, unescape
@@ -11,6 +12,7 @@ OUT = ROOT / "docs"
 BASE = "/blog"
 ORIGIN = "https://zhangjianbai-archive.github.io"
 NAME = "张健柏档案馆"
+VERSION = hashlib.sha256(b"".join(p.read_bytes() for p in [ROOT / "build.py", *sorted((ROOT / "content").glob("*")), ROOT / "docs/assets/style.css", ROOT / "docs/assets/search.js"] if p.is_file())).hexdigest()[:12]
 articles = json.loads((ROOT / "content/articles.json").read_text(encoding="utf-8"))
 catalog = json.loads((ROOT / "content/catalog.json").read_text(encoding="utf-8"))
 categories = json.loads((ROOT / "content/categories.json").read_text(encoding="utf-8"))
@@ -55,16 +57,23 @@ def page(path, title, body, active="", noindex=False):
     html = f'''<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{e(title)} · {NAME}</title><meta name="description" content="{e(title)}">
-<link rel="canonical" href="{ORIGIN}{link(path)}"><meta name="theme-color" content="#e9ebed">
+<link rel="canonical" href="{ORIGIN}{link(path)}"><meta name="site-version" content="{VERSION}"><meta name="theme-color" content="#e9ebed">
 {robots}<link rel="icon" href="data:,">
-<link rel="stylesheet" href="{link('assets/style.css')}"><script src="{link('assets/search.js')}" defer></script></head>
+<link rel="stylesheet" href="{link('assets/style.css')}?v={VERSION}"><script src="{link('assets/search.js')}?v={VERSION}" defer></script></head>
 <body><a class="skip" href="#main">跳至正文</a><div class="shell">
 <header class="site-header"><div class="site-identity"><a class="brand" href="{link()}">{NAME}</a>
 <form id="search-form" class="header-search" action="{link('articles/')}" method="get" role="search" aria-label="站内搜索">
-<label class="sr-only" for="search">搜索文章</label><input id="search" name="q" type="search" placeholder="搜索文章" autocomplete="off"><button type="submit">搜索</button></form>
+<input type="hidden" name="v" value="{VERSION}"><label class="sr-only" for="search">搜索文章</label><input id="search" name="q" type="search" placeholder="搜索文章" autocomplete="off"><button type="submit">搜索</button></form>
 </div><nav aria-label="主导航">{nav}</nav></header>
 <main id="main">{body}</main>
 <footer><span>{NAME}</span><a href="https://github.com/zhangjianbai-archive/blog">GitHub</a></footer></div></body></html>'''
+    def version_link(match):
+        prefix, url = match.groups()
+        parsed = urlsplit(unescape(url))
+        if parsed.path.startswith(BASE + "/") and not parsed.path.startswith(BASE + "/assets/"):
+            url += ("&amp;" if "?" in url else "?") + "v=" + VERSION
+        return prefix + url + '"'
+    html = re.sub(r'(<a\b[^>]*?href=")([^"#]+)"', version_link, html)
     target = OUT / (path + "index.html" if not path or path.endswith("/") else path)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(html, encoding="utf-8")
