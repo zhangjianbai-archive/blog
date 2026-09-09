@@ -5,7 +5,8 @@ import re
 from pathlib import Path
 from html import escape as e, unescape
 from html.parser import HTMLParser
-from urllib.parse import urlsplit, urlencode
+from urllib.parse import urlsplit, urlencode, urlunsplit
+import struct
 
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT / "docs"
@@ -61,10 +62,11 @@ def page(path, title, body, active="", noindex=False, description=None, schema=N
     html = f'''<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{e(title)} · {NAME}</title><meta name="description" content="{e(description)}">{structured}
-<link rel="canonical" href="{ORIGIN}{link(path)}"><meta name="site-version" content="{VERSION}"><meta name="theme-color" content="#e9ebed">
-{robots}<link rel="icon" href="data:,">
+<link rel="canonical" href="{ORIGIN}{link(path)}"><meta name="site-version" content="{VERSION}"><meta name="theme-color" content="#faf9f6">
+<meta property="og:title" content="{e(title)} · {NAME}"><meta property="og:description" content="{e(description)}"><meta property="og:url" content="{ORIGIN}{link(path)}"><meta property="og:type" content="{'article' if schema and schema.get('@type') == 'BlogPosting' else 'website'}"><meta property="og:site_name" content="{NAME}"><meta name="twitter:card" content="summary">
+{robots}<link rel="icon" type="image/svg+xml" href="{link('assets/favicon.svg')}">
 <link rel="stylesheet" href="{link('assets/style.css')}?v={VERSION}"><script src="{link('assets/search.js')}?v={VERSION}" defer></script></head>
-<body><a class="skip" href="#main">跳至正文</a><div class="shell">
+<body id="top"><a class="skip" href="#main">跳至正文</a><div class="shell">
 <header class="site-header"><div class="site-identity"><a class="brand" href="{link()}">{NAME}</a>
 <form id="search-form" class="header-search" action="{link('articles/')}" method="get" role="search" aria-label="站内搜索">
 <input type="hidden" name="v" value="{VERSION}"><label class="sr-only" for="search">搜索文章</label><input id="search" name="q" type="search" placeholder="搜索文章" autocomplete="off"><button type="submit">搜索</button></form>
@@ -75,7 +77,7 @@ def page(path, title, body, active="", noindex=False, description=None, schema=N
         prefix, url = match.groups()
         parsed = urlsplit(unescape(url))
         if parsed.path.startswith(BASE + "/") and not parsed.path.startswith(BASE + "/assets/"):
-            url += ("&amp;" if "?" in url else "?") + "v=" + VERSION
+            url = e(urlunsplit(parsed._replace(query=parsed.query+('&' if parsed.query else '')+'v='+VERSION)), quote=True)
         return prefix + url + '"'
     html = re.sub(r'(<a\b[^>]*?href=")([^"#]+)"', version_link, html)
     target = OUT / (path + "index.html" if not path or path.endswith("/") else path)
@@ -198,19 +200,21 @@ def topic_groups(items, searchable=False, category_headings=True):
 def category_jumps():
     return '<div class="category-jumps" aria-label="按议题筛选">'+filter_link("category","","全部")+''.join(filter_link("category",c["slug"],c["title"]) for c in categories)+'</div>'
 
-page("articles/", "文章目录", layout(f'''<h1 class="page-title">文章目录</h1>
+def directory_body(number):
+    pages = (len(catalog)+19)//20
+    prev_path = 'articles/' if number == 2 else f'articles/page/{number-1}/'
+    prev_attrs = f'href="{link(prev_path)}"' if number > 1 else 'aria-disabled="true"'
+    next_attrs = f'href="{link(f"articles/page/{number+1}/")}"' if number < pages else 'aria-disabled="true"'
+    return f'''<h1 class="page-title">文章目录</h1>
 <div class="catalog-toolbar"><p class="result-count" id="result-count" role="status">{len(catalog)} 个标题 · {len(articles)} 篇可阅读全文</p><label><input type="checkbox" id="readable-only"> 只看已上架</label></div>
 {category_jumps()}<details class="filter-picker"><summary>专题、合集与作者</summary><div class="filter-options"><label>专题<select data-select="topic"><option value="">全部专题</option>{''.join(f'<option value="{f["slug"]}">{e(f["title"])}</option>' for f in features)}</select></label><label>合集<select data-select="tag"><option value="">全部合集</option>{''.join(f'<option value="{t["slug"]}">{e(t["title"])}</option>' for t in tags)}</select></label><label>作者<select data-select="author"><option value="">全部作者</option>{''.join(f'<option value="{e(a,quote=True)}">{e(a)}</option>' for a in sorted({a["author"] for a in catalog if a["author"]}))}</select></label></div></details>
 <div class="active-filters" id="active-filters" aria-label="当前筛选"></div><button id="clear-search" hidden>清空筛选</button>
-<div id="results"><ul class="catalog-list">{''.join(title_row(a, searchable=True) for a in catalog)}</ul></div>
-<div id="empty" class="empty" hidden><p>没有匹配的文章，请调整筛选条件。</p></div><nav class="pagination" aria-label="结果分页"><a id="prev-page" aria-disabled="true">上一页</a><span id="page-count" role="status"></span><a id="next-page" href="{link('articles/page/2/')}">下一页</a></nav>'''), "文章目录")
+<div id="results"><ul class="catalog-list">{''.join(title_row(a, searchable=True).replace('class="catalog-entry"', 'class="catalog-entry"'+(' hidden' if not (number-1)*20 <= i < number*20 else '')) for i,a in enumerate(catalog))}</ul></div>
+<div id="empty" class="empty" hidden><p>没有匹配的文章，请调整筛选条件。</p></div><nav class="pagination" aria-label="结果分页"><a id="prev-page" {prev_attrs}>上一页</a><span id="page-count" role="status">{number} / {pages}</span><a id="next-page" {next_attrs}>下一页</a></nav>'''
 
-for number in range(2, (len(catalog)+19)//20+1):
-    prev_path = 'articles/' if number == 2 else f'articles/page/{number-1}/'
-    paging = f'<a href="{link(prev_path)}">上一页</a>'
-    if number*20 < len(catalog):
-        paging += f'<a href="{link(f"articles/page/{number+1}/")}">下一页</a>'
-    page(f'articles/page/{number}/',f'文章目录 · 第 {number} 页',layout(f'<h1 class="page-title">文章目录 · 第 {number} 页</h1><ul class="catalog-list">'+''.join(title_row(a) for a in catalog[(number-1)*20:number*20])+f'</ul><nav class="pagination" aria-label="结果分页">{paging}</nav>'),'文章目录')
+for number in range(1, (len(catalog)+19)//20+1):
+    path = 'articles/' if number == 1 else f'articles/page/{number}/'
+    page(path, '文章目录' if number == 1 else f'文章目录 · 第 {number} 页', layout(directory_body(number)), '文章目录')
 
 topic_index = ''.join('<section class="topic-index"><h2>'+filter_link("category",c["slug"],c["title"])+'</h2><ul>'+''.join('<li>'+filter_link("topic",f["slug"],f["title"])+'</li>' for f in features if f['category']==c['slug'])+'</ul></section>' for c in categories)
 page("topics/", "分类", layout('<h1 class="page-title">分类</h1>'+topic_index+'<section class="topic-index"><h2>合集标签</h2>'+taxonomy(tags,"tags")+'</section>'), "分类")
@@ -250,6 +254,34 @@ def related_html(article):
     if not matches:return ''
     return '<section class="related-posts"><h2>相关文章</h2><ul>'+''.join(f'<li><a href="{link("articles/"+x["slug"]+"/")}">{e(x["title"])}</a></li>' for x in matches)+'</ul></section>'
 
+def image_size(path):
+    data = path.read_bytes()
+    if data.startswith(b'\x89PNG'):
+        return struct.unpack('>II', data[16:24])
+    if data.startswith(b'RIFF') and data[8:12] == b'WEBP':
+        kind = data[12:16]
+        if kind == b'VP8X':
+            return 1+int.from_bytes(data[24:27],'little'), 1+int.from_bytes(data[27:30],'little')
+        if kind == b'VP8 ':
+            w,h = struct.unpack('<HH',data[26:30])
+            return w & 16383, h & 16383
+        if kind == b'VP8L':
+            bits = int.from_bytes(data[21:25],'little')
+            return (bits & 16383)+1, ((bits >> 14) & 16383)+1
+    if data.startswith(b'\xff\xd8'):
+        pos = 2
+        while pos < len(data):
+            while data[pos] == 255:
+                pos += 1
+            marker = data[pos]
+            pos += 1
+            length = int.from_bytes(data[pos:pos+2],'big')
+            if marker in {192,193,194,195,197,198,199,201,202,203,205,206,207}:
+                h,w = struct.unpack('>HH',data[pos+3:pos+7])
+                return w,h
+            pos += length
+    raise ValueError(f'Unsupported image header: {path}')
+
 def paragraph_html(p):
     if isinstance(p, str):
         return f'<p>{source_links(e(p))}</p>'
@@ -262,18 +294,33 @@ def paragraph_html(p):
     if 'table' in p:
         return '<div class="table-scroll"><table>'+''.join('<tr>'+''.join('<td>'+e(cell)+'</td>' for cell in row)+'</tr>' for row in p['table'])+'</table></div>'
     assert re.fullmatch(r'assets/articles/[a-z0-9/-]+\.(png|jpg|webp)', p['image'])
-    return f'<figure><a href="{link(p["image"])}"><img src="{link(p["image"])}" alt="{e(p["alt"], quote=True)}" loading="lazy"></a></figure>'
+    width,height = image_size(OUT / p['image'])
+    return f'<figure><a href="{link(p["image"])}"><img src="{link(p["image"])}" alt="{e(p["alt"], quote=True)}" width="{width}" height="{height}" loading="lazy"></a></figure>'
 
+# These existing, verbatim subheadings were checked in the article. Do not
+# infer headings from arbitrary paragraph length or rewrite their wording.
+reading_subheadings = {
+    'klein-my-path-through-new-education': {
+        '① 双重思想（double think）': 3,
+        '② 圣君情节（cult of personality）': 3,
+        '③ 基于真实数据的忽悠（Lying with statistics）': 3,
+        '④ 新话（new speak）': 3,
+    }
+}
 for a in articles:
+    subheadings = reading_subheadings.get(a['slug'], {})
+    def reading_paragraph(p, i, j):
+        level = subheadings.get(p) if isinstance(p, str) else None
+        return f'<h{level} id="section-{i}-heading-{j}">{e(p)}</h{level}>' if level else paragraph_html(p)
     sections = "".join(
-        f'<section id="section-{i}">'+(f'<h{min(4,max(2,s.get("level",2)))}>{e(s["heading"])}</h{min(4,max(2,s.get("level",2)))}>' if s["heading"] else '')+('<blockquote>' if s.get('quotation') else '')+''.join(paragraph_html(p) for p in s["paragraphs"])+('</blockquote>' if s.get('quotation') else '')+"</section>"
+        f'<section id="section-{i}">'+(f'<h{min(4,max(2,s.get("level",2)))}>{e(s["heading"])}</h{min(4,max(2,s.get("level",2)))}>' if s["heading"] else '')+('<blockquote>' if s.get('quotation') else '')+''.join(reading_paragraph(p,i,j) for j,p in enumerate(s["paragraphs"]))+('</blockquote>' if s.get('quotation') else '')+"</section>"
         for i, s in enumerate(a["sections"])
     )
-    toc = "".join(f'<a href="#section-{i}">{e(s["heading"])}</a>' for i, s in enumerate(a["sections"]) if s["heading"]) or '<a href="#section-0">正文</a>'
+    toc = "".join((f'<a class="toc-level-{min(4,max(2,s.get("level",2)))}" href="#section-{i}">{e(s["heading"])}</a>' if s['heading'] else '')+''.join(f'<a class="toc-level-{subheadings[p]}" href="#section-{i}-heading-{j}">{e(p)}</a>' for j,p in enumerate(s['paragraphs']) if isinstance(p,str) and p in subheadings) for i,s in enumerate(a['sections'])) or '<a href="#section-0">正文</a>'
     summary = summary_html(a)
-    reading_side = '<aside class="sidebar article-sidebar" aria-label="本文侧栏"><section class="toc"><h2>目录</h2>'+toc+'</section>'+summary+'</aside>'
+    reading_side = '<aside id="reading-navigation" class="sidebar article-sidebar" aria-label="本文侧栏"><section class="toc"><h2>目录</h2>'+toc+'</section>'+summary+'</aside>'
     back = f'<a class="back-results" href="{link("articles/")}">返回文章目录</a>'
-    article_body = f'<article>{back}<h1 class="post-title article-title">{e(a["title"])}</h1>{metadata(a)}'+f'<div class="prose">{sections}</div>{article_tags(a)}<div class="reading-footer">{back} · <a href="#main">回到顶部 ↑</a></div></article>'
+    article_body = f'<article><header class="article-heading">{back}<h1 class="post-title article-title">{e(a["title"])}</h1>{metadata(a)}</header>'+f'<div class="prose">{sections}</div>{article_tags(a)}<div class="reading-footer">{back}</div></article><div class="reading-controls" aria-label="阅读工具"><button type="button" id="toggle-toc" aria-controls="reading-navigation" aria-expanded="false">目录</button><a href="#top" id="back-top">回到顶部 ↑</a></div>'
     article_body += series_html(a)+related_html(a)
     url=ORIGIN+link('articles/'+a['slug']+'/')
     description=' '.join(a.get('excerpt',[])) or a['title']
