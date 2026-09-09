@@ -15,6 +15,7 @@ articles = json.loads((ROOT / "content/articles.json").read_text(encoding="utf-8
 catalog = json.loads((ROOT / "content/catalog.json").read_text(encoding="utf-8"))
 categories = json.loads((ROOT / "content/categories.json").read_text(encoding="utf-8"))
 tags = json.loads((ROOT / "content/tags.json").read_text(encoding="utf-8"))
+presentation = json.loads((ROOT / "content/presentation.json").read_text(encoding="utf-8"))
 features = json.loads((ROOT / "content/features.json").read_text(encoding="utf-8"))
 for entries in (categories, tags, articles, catalog, features):
     slugs = [entry["slug"] for entry in entries]
@@ -48,7 +49,7 @@ def filter_link(key, value, label, css=""):
 def page(path, title, body, active="", noindex=False):
     nav = "".join(
         f'<a href="{link(p)}"' + (' aria-current="page"' if active == label else "") + f">{label}</a>"
-        for label, p in [("首页", ""), ("文章目录", "articles/"), ("分类与标签", "topics/"), ("关于", "about/")]
+        for label, p in [("首页", ""), ("张健柏是谁？", "who-is-zhang-jianbai/"), ("文章目录", "articles/"), ("分类", "topics/"), ("关于", "about/")]
     )
     robots = '<meta name="robots" content="noindex,follow">' if noindex else ""
     html = f'''<!doctype html>
@@ -83,22 +84,33 @@ def taxonomy(entries, kind):
         for t in entries
     ) + '</ul>'
 
-def sidebar(toc=""):
+def sidebar():
     groups = []
+    home_slugs = {a["slug"] for a in articles[:5]}
     for c in categories:
-        links = ''.join(f'<li>{filter_link("topic",f["slug"],f["title"])}</li>' for f in features if f["category"] == c["slug"])
+        selected = []
+        for a in articles:
+            if a["category"] == c["slug"] and a["slug"] not in home_slugs and a.get("author") not in {x.get("author") for x in selected}:
+                selected.append(a)
+            if len(selected) == 2:
+                break
+        links = ''.join(f'<li><a href="{link("articles/"+a["slug"]+"/")}">{e(a["title"])}</a></li>' for a in selected)
         groups.append(f'<section><h2>{e(c["title"])}</h2><ul class="sidebar-bullets">{links}</ul></section>')
-    recommended = ''.join(f'<li><a href="{link("articles/"+a["slug"]+"/")}">{e(a["title"])}</a></li>' for a in articles[:3])
     return f'''<aside class="sidebar" aria-label="博客侧栏">
-{('<section class="toc"><h2>文章目录</h2>'+toc+'</section>') if toc else ""}
 <section><h2>博客主要内容</h2><ul class="sidebar-bullets"><li>追问教育承诺与实际成果</li><li>呈现学堂里的学习与生活</li><li>讨论权威、服从与精神控制</li><li>记录质疑、删帖与舆论交锋</li><li>回望离开学堂后的经历</li><li>对照张健柏的言论与行动</li></ul></section>
 {''.join(groups)}
-<section><h2>推荐帖子</h2><ul class="sidebar-bullets">{recommended}</ul></section>
-<section><h2>合集标签</h2>{taxonomy(tags, "tags")}</section>
+<details class="sidebar-tags"><summary>合集标签</summary>{taxonomy(tags, "tags")}</details>
 </aside>'''
 
-def layout(content, toc=""):
-    return f'<div class="blog-layout"><div class="main-column">{content}</div>{sidebar(toc)}</div>'
+def layout(content, article_sidebar=None):
+    side = sidebar() if article_sidebar is None else article_sidebar
+    return f'<div class="blog-layout{ " reading-layout" if article_sidebar is not None else ""}"><div class="main-column">{content}</div>{side}</div>'
+
+def summary_html(a):
+    points = presentation.get(a["slug"], {}).get("points", [])
+    if not points:
+        return ""
+    return '<section class="article-summary"><h2>文章总结</h2><p class="summary-credit">编辑摘要 · 依据本文</p><ul>'+''.join(f'<li>{e(point["text"])} <a href="#section-{point["section"]}" aria-label="阅读对应段落">↗</a></li>' for point in points)+'</ul></section>'
 
 def metadata(a):
     category = next(c for c in categories if c["slug"] == a["category"])
@@ -121,7 +133,7 @@ def row(a, preview=False):
     text += [p if isinstance(p, str) else p.get("alt", "") for s in a["sections"] for p in [s["heading"], *s["paragraphs"]]]
     search = e(" ".join(text), quote=True)
     url = link("articles/"+a["slug"]+"/")
-    excerpt = "".join(f'<p>{e(p)}</p>' for p in a.get("excerpt", [a.get("summary","")])) if preview else ""
+    excerpt = "".join(f'<p>{e(p)}</p>' for p in ([presentation[a["slug"]]["excerpt"]] if a["slug"] in presentation else a.get("excerpt", [a.get("summary","")])) ) if preview else ""
     return f'''<article class="post" data-search="{search}">
 <h2 class="post-title"><a href="{url}">{e(a["title"])}</a></h2>
 {metadata(a)}{('<div class="excerpt">'+excerpt+'</div>') if preview else ""}
@@ -180,7 +192,7 @@ page("articles/", "文章目录", layout(f'''<h1 class="page-title">文章目录
 <div id="empty" class="empty" hidden><p>没有匹配的文章，请调整筛选条件。</p></div><nav class="pagination" aria-label="结果分页"><button id="prev-page">上一页</button><span id="page-count" role="status"></span><button id="next-page">下一页</button></nav>'''), "文章目录")
 
 topic_index = ''.join('<section class="topic-index"><h2>'+filter_link("category",c["slug"],c["title"])+'</h2><ul>'+''.join('<li>'+filter_link("topic",f["slug"],f["title"])+'</li>' for f in features if f['category']==c['slug'])+'</ul></section>' for c in categories)
-page("topics/", "分类与标签", layout('<h1 class="page-title">分类与标签</h1>'+topic_index+'<section class="topic-index"><h2>合集标签</h2>'+taxonomy(tags,"tags")+'</section>'), "分类与标签")
+page("topics/", "分类", layout('<h1 class="page-title">分类</h1>'+topic_index+'<section class="topic-index"><h2>合集标签</h2>'+taxonomy(tags,"tags")+'</section>'), "分类")
 
 for entries, kind in [(categories, "topics"), (tags, "tags")]:
     for entry in entries:
@@ -188,7 +200,7 @@ for entries, kind in [(categories, "topics"), (tags, "tags")]:
         listing = topic_groups(items, category_headings=False) if kind == "topics" else '<ul class="catalog-list">'+''.join(title_row(a) for a in items)+'</ul>'
         page(kind+"/"+entry["slug"]+"/", entry["title"],
              layout(f'<h1 class="page-title">{e(entry["title"])}{count_label(len(items))}</h1>' + (listing if items else empty())),
-             "分类与标签")
+             "分类")
 
 def paragraph_html(p):
     if isinstance(p, str):
@@ -203,10 +215,12 @@ for a in articles:
         f'<section id="section-{i}">'+(f'<h2>{e(s["heading"])}</h2>' if s["heading"] else '')+('<blockquote>' if s.get('quotation') else '')+''.join(paragraph_html(p) for p in s["paragraphs"])+('</blockquote>' if s.get('quotation') else '')+"</section>"
         for i, s in enumerate(a["sections"])
     )
-    toc = "".join(f'<a href="#section-{i}">{e(s["heading"])}</a>' for i, s in enumerate(a["sections"]) if s["heading"])
+    toc = "".join(f'<a href="#section-{i}">{e(s["heading"])}</a>' for i, s in enumerate(a["sections"]) if s["heading"]) or '<a href="#section-0">正文</a>'
+    summary = summary_html(a)
+    reading_side = '<aside class="sidebar article-sidebar" aria-label="本文侧栏"><section class="toc"><h2>目录</h2>'+toc+'</section>'+summary+'</aside>'
     back = f'<a class="back-results" href="{link("articles/")}">返回文章目录</a>'
-    article_body = f'<article>{back}<h1 class="post-title article-title">{e(a["title"])}</h1>{metadata(a)}'+(f'<details class="reading-toc"><summary>本文目录</summary>{toc}</details>' if toc else '')+f'<div class="prose">{sections}</div>{article_tags(a)}<div class="reading-footer">{back} · <a href="#main">回到顶部 ↑</a></div></article>'
-    page("articles/"+a["slug"]+"/", a["title"], layout(article_body, toc), "文章目录")
+    article_body = f'<article>{back}<h1 class="post-title article-title">{e(a["title"])}</h1>{metadata(a)}'+f'<div class="prose">{sections}</div>{article_tags(a)}<div class="reading-footer">{back} · <a href="#main">回到顶部 ↑</a></div></article>'
+    page("articles/"+a["slug"]+"/", a["title"], layout(article_body, reading_side), "文章目录")
 
 def inline_markdown(text):
     # Render the Markdown constructs used in the original introduction, without editing its source.
@@ -254,10 +268,11 @@ def introduction(source="README.md"):
         result.append(f"</{list_kind}>")
     return "".join(result)
 
-page("about/", "关于", layout('<article class="prose introduction">'+introduction("content/who-is-zhang-jianbai.md")+introduction("content/blog-introduction.md")+'</article>'), "关于")
+page("who-is-zhang-jianbai/", "张健柏是谁？", layout('<article class="prose introduction">'+introduction("content/who-is-zhang-jianbai.md")+'</article>'), "张健柏是谁？")
+page("about/", "关于", layout('<article class="prose introduction">'+introduction("content/blog-introduction.md")+'</article>'), "关于")
 page("404.html", "页面未找到", layout(f'<h1 class="page-title">页面未找到</h1><p><a href="{link()}">返回首页</a></p>'), noindex=True)
 (OUT / ".nojekyll").touch()
-urls = ["", "articles/", "topics/", "about/"] + ["topics/"+c["slug"]+"/" for c in categories] + ["articles/"+a["slug"]+"/" for a in articles]
+urls = ["", "articles/", "topics/", "about/", "who-is-zhang-jianbai/"] + ["topics/"+c["slug"]+"/" for c in categories] + ["articles/"+a["slug"]+"/" for a in articles]
 urls += ["tags/"+t["slug"]+"/" for t in tags]
 (OUT/"sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+''.join(f'<url><loc>{ORIGIN}{link(p)}</loc></url>' for p in urls)+"</urlset>", encoding="utf-8")
 

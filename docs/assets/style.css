@@ -118,3 +118,13 @@ button:disabled{opacity:.4;cursor:default}.topic-index{margin-bottom:28px}.topic
 .more-posts{display:inline-block;margin-top:20px}.catalog-toolbar .result-count{margin-bottom:0}
 @media(max-width:650px){.filter-options{grid-template-columns:1fr}.post-title{font-size:22px}.brand{font-size:25px}.excerpt{font-size:16px}.reading-toc{display:block}}
 .table-scroll{overflow-x:auto;max-width:100%}.prose table{border-collapse:collapse;width:100%;font-size:14px}.prose td{border:1px solid var(--line);padding:8px;vertical-align:top}
+
+/* Homepage selection and article-specific reading sidebar. */
+.post-title{font-size:22px}.post:first-child .post-title{font-size:25px}
+.excerpt{font-size:15px;line-height:1.85}.article-meta,.post-tags{font-size:12px}
+.sidebar-tags{margin-top:22px}.sidebar-tags summary{cursor:pointer;font-weight:700;padding-bottom:8px}
+.article-summary ul{padding-left:17px;margin:8px 0}.article-summary li{margin:0 0 12px;line-height:1.8}
+.summary-credit{font-size:12px;color:var(--muted);margin:6px 0}
+.article-sidebar .toc a{font-size:13px;line-height:1.7;margin:4px 0}
+.site-header nav{flex-wrap:wrap;gap:12px 20px}.site-header nav a{white-space:nowrap}
+@media(max-width:650px){.post-title{font-size:21px}.post:first-child .post-title{font-size:23px}.site-header nav{gap:6px 16px}.reading-layout .article-sidebar{grid-row:1;border-bottom:1px solid var(--line);padding:16px 20px}.article-sidebar .toc{display:block}.article-sidebar .toc a{padding:2px 0}.article-sidebar section+section{margin-top:16px}}
