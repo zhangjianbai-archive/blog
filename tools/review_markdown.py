@@ -19,6 +19,9 @@ def create(packet_path, config_path, output_path):
     packet = {item["slug"]: item for item in json.loads(Path(packet_path).read_text(encoding="utf-8"))}
     config = json.loads(Path(config_path).read_text(encoding="utf-8"))
     item = packet[config["slug"]]
+    source_paragraphs = {block["text"] for block in item["blocks"] if block["text"].strip()}
+    assert config["description"] in source_paragraphs, "Description must be one complete source paragraph"
+    assert all(point["text"] in source_paragraphs for point in config["key_points"]), "Key points must be complete source paragraphs"
     headings = {int(key): value for key, value in config["headings"].items()}
     meta = {
         "slug": item["slug"], "title": item["title"], "author": item["author"],
