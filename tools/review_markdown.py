@@ -25,7 +25,7 @@ def create(packet_path, config_path, output_path):
     headings = {int(key): value for key, value in config["headings"].items()}
     comments = {index: comment for comment in config.get("comments", []) for index in range(comment["start"], comment["end"] + 1)}
     meta = {
-        "slug": item["slug"], "title": item["title"], "author": item["author"],
+        "slug": config.get("target_slug", item["slug"]), "title": item["title"], "author": item["author"],
         "source": config["source"], "source_start": item["source_start"], "source_end": item["source_end"],
         "description": config["description"], "key_points": config["key_points"],
     }

@@ -70,7 +70,14 @@ def main(source_dir, document_name, output):
                     member = target.lstrip("/") if target.startswith("/") else str(PurePosixPath("word") / target)
                     data = archive.read(member)
                     suffix = Path(member).suffix.lower().replace(".jpeg", ".jpg")
-                    images.append(f"assets/articles/docx/{hashlib.sha256(data).hexdigest()[:24]}{suffix}")
+                    relative = f"assets/articles/docx/{hashlib.sha256(data).hexdigest()[:24]}{suffix}"
+                    destination = ROOT / "docs" / relative
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    if destination.exists():
+                        assert destination.read_bytes() == data, f"Image hash collision: {relative}"
+                    else:
+                        destination.write_bytes(data)
+                    images.append(relative)
                 if not value.strip() and not any(embeds):
                     continue
                 style = paragraph.find("w:pPr/w:pStyle", NS)
