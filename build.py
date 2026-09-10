@@ -123,10 +123,13 @@ def layout(content, article_sidebar=None):
     return f'<div class="blog-layout{ " reading-layout" if article_sidebar is not None else ""}"><div class="main-column">{content}</div>{side}</div>'
 
 def summary_html(a):
-    points = presentation.get(a["slug"], {}).get("points", [])
+    item = presentation.get(a["slug"], {})
+    if item.get("kind") != "editorial":
+        return ""
+    points = item.get("points", [])
     if not points:
         return ""
-    return '<section class="article-summary"><h2>原文提要</h2><p class="summary-credit">摘自原文</p><ul>'+''.join(f'<li>{e(point["text"])} <a href="#section-{point["section"]}" aria-label="阅读对应段落">↗</a></li>' for point in points)+'</ul></section>'
+    return '<section class="article-summary"><h2>文章总览</h2><p class="summary-credit">档案馆根据原文整理</p><ul>'+''.join(f'<li>{e(point["text"])} <a href="#section-{point["section"]}" aria-label="阅读相关段落">↗</a></li>' for point in points)+'</ul></section>'
 
 def metadata(a):
     category = next(c for c in categories if c["slug"] == a["category"])
@@ -149,7 +152,8 @@ def row(a, preview=False):
     text += [p if isinstance(p, str) else p.get("alt", "") for s in a["sections"] for p in [s["heading"], *s["paragraphs"]]]
     search = e(" ".join(text), quote=True)
     url = link("articles/"+a["slug"]+"/")
-    excerpt = "".join(f'<p>{e(p)}</p>' for p in ([presentation[a["slug"]]["excerpt"]] if a["slug"] in presentation else a.get("excerpt", [a.get("summary","")])) ) if preview else ""
+    overview = presentation.get(a["slug"], {})
+    excerpt = f'<p>{e(overview["excerpt"])}</p>' if preview and overview.get("kind") == "editorial" else ""
     return f'''<article class="post" data-search="{search}">
 <h2 class="post-title"><a href="{url}">{e(a["title"])}</a></h2>
 {metadata(a)}{('<div class="excerpt">'+excerpt+'</div>') if preview else ""}

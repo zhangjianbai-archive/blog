@@ -48,9 +48,12 @@ def create(packet_path, config_path, output_path):
     packet = {item["slug"]: item for item in json.loads(Path(packet_path).read_text(encoding="utf-8"))}
     config = json.loads(Path(config_path).read_text(encoding="utf-8"))
     item = packet[config["slug"]]
-    source_paragraphs = {block["text"] for block in item["blocks"] if block["text"].strip()}
-    assert config["description"] in source_paragraphs, "Description must be one complete source paragraph"
-    assert all(point["text"] in source_paragraphs for point in config["key_points"]), "Key points must be complete source paragraphs"
+    assert config.get("overview_kind") == "editorial", "GEO overview must be marked as editorial"
+    assert isinstance(config.get("description"), str) and config["description"].strip(), "GEO overview is required"
+    assert 2 <= len(config.get("key_points", [])) <= 6, "GEO overview needs 2-6 key points"
+    assert all(isinstance(point.get("text"), str) and point["text"].strip()
+               and isinstance(point.get("section"), int) and point["section"] >= 0
+               for point in config["key_points"]), "Invalid GEO overview point"
     headings = {int(key): value for key, value in config["headings"].items()}
     splits = {int(key): value for key, value in config.get("splits", {}).items()}
     split_headings = {int(key): value for key, value in config.get("split_headings", {}).items()}
@@ -60,6 +63,7 @@ def create(packet_path, config_path, output_path):
         "author": config.get("author", item["author"]),
         "source": config["source"], "source_start": item["source_start"], "source_end": item["source_end"],
         "description": config["description"], "key_points": config["key_points"],
+        "overview_kind": "editorial",
     }
     lines = ["<!--ARCHIVE-META", json.dumps(meta, ensure_ascii=False, indent=2), "-->", "", f"# {item['title']}", "", "<!-- 原文开始 -->", ""]
     active_comment = None
@@ -157,7 +161,10 @@ def apply(markdown_path):
     articles_path.write_text(json.dumps(articles, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     presentation_path = ROOT / "content/presentation.json"
     presentation = json.loads(presentation_path.read_text(encoding="utf-8"))
-    presentation[metadata["slug"]] = {"excerpt": metadata["description"], "points": metadata["key_points"]}
+    presentation[metadata["slug"]] = {
+        "excerpt": metadata["description"], "points": metadata["key_points"],
+        "kind": metadata.get("overview_kind"),
+    }
     presentation_path.write_text(json.dumps(presentation, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
