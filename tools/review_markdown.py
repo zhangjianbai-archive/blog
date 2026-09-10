@@ -8,11 +8,15 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def plain(markdown):
-    return re.sub(r"\*\*", "", markdown)
+    value = re.sub(r"(?<!\\)\*\*", "", markdown)
+    return value.replace(r"\*\*", "**")
 
 
 def marked(block):
-    return "".join(f"**{run['text']}**" if run["bold"] else run["text"] for run in block["runs"])
+    return "".join(
+        f"**{run['text']}**" if run["bold"] else run["text"].replace("**", r"\*\*")
+        for run in block["runs"]
+    )
 
 
 def create(packet_path, config_path, output_path):
