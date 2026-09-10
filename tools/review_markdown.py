@@ -19,6 +19,31 @@ def marked(block):
     )
 
 
+def split_marked(block, parts):
+    """Split one source paragraph without changing text or Word bold runs."""
+    assert parts and "".join(parts) == block["text"], "Paragraph splits must reproduce the source text exactly"
+    boundaries = []
+    offset = 0
+    for part in parts:
+        boundaries.append((offset, offset + len(part)))
+        offset += len(part)
+    result = []
+    run_start = 0
+    for part_start, part_end in boundaries:
+        fragments = []
+        run_start = 0
+        for run in block["runs"]:
+            run_end = run_start + len(run["text"])
+            start = max(part_start, run_start)
+            end = min(part_end, run_end)
+            if start < end:
+                value = run["text"][start - run_start:end - run_start]
+                fragments.append(f"**{value}**" if run["bold"] else value.replace("**", r"\*\*"))
+            run_start = run_end
+        result.append("".join(fragments))
+    return result
+
+
 def create(packet_path, config_path, output_path):
     packet = {item["slug"]: item for item in json.loads(Path(packet_path).read_text(encoding="utf-8"))}
     config = json.loads(Path(config_path).read_text(encoding="utf-8"))
@@ -27,6 +52,7 @@ def create(packet_path, config_path, output_path):
     assert config["description"] in source_paragraphs, "Description must be one complete source paragraph"
     assert all(point["text"] in source_paragraphs for point in config["key_points"]), "Key points must be complete source paragraphs"
     headings = {int(key): value for key, value in config["headings"].items()}
+    splits = {int(key): value for key, value in config.get("splits", {}).items()}
     comments = {index: comment for comment in config.get("comments", []) for index in range(comment["start"], comment["end"] + 1)}
     meta = {
         "slug": config.get("target_slug", item["slug"]), "title": item["title"],
@@ -45,11 +71,14 @@ def create(packet_path, config_path, output_path):
                 payload = {key: value for key, value in comment.items() if key not in {"start", "end"}}
                 lines.extend([f"<!-- 原文评论开始 {json.dumps(payload, ensure_ascii=False)} -->", ""])
             active_comment = comment
-        text = marked(block)
-        if text and block["paragraph"] in headings:
-            lines.extend(["#" * headings[block["paragraph"]] + " " + text, ""])
-        elif text:
-            lines.extend([text, ""])
+        parts = splits.get(block["paragraph"], [block["text"]])
+        marked_parts = split_marked(block, parts) if block["text"] else []
+        assert not (block["paragraph"] in headings and len(marked_parts) > 1), "Heading paragraphs cannot also be split"
+        for text in marked_parts:
+            if text and block["paragraph"] in headings:
+                lines.extend(["#" * headings[block["paragraph"]] + " " + text, ""])
+            elif text:
+                lines.extend([text, ""])
         for image in block["images"]:
             lines.extend([f"![{item['title']}：原文配图](/blog/{image})", ""])
     if active_comment is not None:
@@ -57,10 +86,11 @@ def create(packet_path, config_path, output_path):
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text("\n".join(lines), encoding="utf-8")
-    verify(output, item)
+    verify(output, item, splits)
 
 
-def verify(markdown_path, source_item):
+def verify(markdown_path, source_item, splits=None):
+    splits = splits or {}
     text = Path(markdown_path).read_text(encoding="utf-8").split("<!-- 原文开始 -->", 1)[1]
     paragraphs = []
     markdown_paragraphs = []
@@ -76,9 +106,12 @@ def verify(markdown_path, source_item):
         else:
             markdown_paragraphs.append(value)
             paragraphs.append(plain(value))
-    expected = [block["text"] for block in source_item["blocks"] if block["text"].strip()]
+    expected = [part for block in source_item["blocks"] if block["text"].strip()
+                for part in splits.get(block["paragraph"], [block["text"]])]
     assert paragraphs == expected, "Reviewed Markdown changed source text"
-    expected_markdown = [marked(block) for block in source_item["blocks"] if block["text"].strip()]
+    expected_markdown = [part for block in source_item["blocks"] if block["text"].strip()
+                         for part in (split_marked(block, splits[block["paragraph"]])
+                                      if block["paragraph"] in splits else [marked(block)])]
     assert markdown_paragraphs == expected_markdown, "Reviewed Markdown changed source bold formatting"
     expected_images = [image for block in source_item["blocks"] for image in block["images"]]
     assert images == expected_images, "Reviewed Markdown changed source image order"
