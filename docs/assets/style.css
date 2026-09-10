@@ -205,3 +205,11 @@ footer{margin:0 28px;padding:14px 0}
 }
 @media print{.article-heading{position:static}.reading-controls{display:none}.reading-layout .article-sidebar{position:static;max-height:none;overflow:visible}.prose section{scroll-margin-top:0}}
 .prose [id]{scroll-margin-top:calc(var(--reading-header-height,160px) + 14px)}
+.source-comments{margin:28px 0;padding:18px 20px;border:1px solid var(--line);background:#ecebea}
+.source-comments::before{content:"评论区";display:block;margin:0 0 14px;font-size:18px;font-weight:700}
+.source-comments ol{margin:0;padding:0;list-style:none}
+.source-comments .comment{margin:0}
+.source-comments .comment article{padding:14px 16px;background:var(--paper);border-left:3px solid var(--accent)}
+.source-comments .comment header{font-size:13px;font-weight:700;color:var(--muted);margin-bottom:8px}
+.source-comments .comment p{margin:10px 0}
+.source-comments .comment-children{margin:10px 0 0 22px;padding-left:14px;border-left:1px solid var(--line)}

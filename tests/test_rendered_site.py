@@ -54,6 +54,11 @@ class RenderedSite(unittest.TestCase):
                     if isinstance(p, str): expected.append(p)
                     elif 'markdown' in p: expected.append(p['markdown'].replace('**', ''))
                     elif 'table' in p: expected.extend(cell for row in p['table'] for cell in row)
+                for comment in section.get('comments', []):
+                    for p in comment.get('paragraphs', []):
+                        if isinstance(p, str): expected.append(p)
+                        elif 'markdown' in p: expected.append(p['markdown'].replace('**', ''))
+                        elif 'table' in p: expected.extend(cell for row in p['table'] for cell in row)
             page = Page((ROOT/'docs/articles'/article['slug']/'index.html').read_text(encoding='utf-8'))
             self.assertEqual(normalized(''.join(expected)), normalized(''.join(page.prose)), article['slug'])
 

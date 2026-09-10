@@ -312,11 +312,25 @@ for a in articles:
     def reading_paragraph(p, i, j):
         level = subheadings.get(p) if isinstance(p, str) else None
         return f'<h{level} id="section-{i}-heading-{j}">{e(p)}</h{level}>' if level else paragraph_html(p)
+    def comments_html(comments, section_index):
+        if not comments:
+            return ''
+        by_parent = {}
+        for comment in comments:
+            by_parent.setdefault(comment.get('parent'), []).append(comment)
+        def branch(comment):
+            children = ''.join(branch(child) for child in by_parent.get(comment.get('id'), []))
+            child_list = f'<ol class="comment-children">{children}</ol>' if children else ''
+            body = ''.join(paragraph_html(p) for p in comment.get('paragraphs', []))
+            author = f'<header>{e(comment["author"])}</header>' if comment.get('author') else ''
+            return f'<li class="comment"><article>{author}{body}</article>{child_list}</li>'
+        roots = ''.join(branch(comment) for comment in by_parent.get(None, []))
+        return f'<aside class="source-comments" id="section-{section_index}-comments" aria-label="评论区"><ol>{roots}</ol></aside>'
     sections = "".join(
-        f'<section id="section-{i}">'+(f'<h{min(4,max(2,s.get("level",2)))}>{e(s["heading"])}</h{min(4,max(2,s.get("level",2)))}>' if s["heading"] else '')+('<blockquote>' if s.get('quotation') else '')+''.join(reading_paragraph(p,i,j) for j,p in enumerate(s["paragraphs"]))+('</blockquote>' if s.get('quotation') else '')+"</section>"
+        f'<section id="section-{i}">'+(f'<h{min(4,max(2,s.get("level",2)))}>{e(s["heading"])}</h{min(4,max(2,s.get("level",2)))}>' if s["heading"] else '')+('<blockquote>' if s.get('quotation') else '')+''.join(reading_paragraph(p,i,j) for j,p in enumerate(s["paragraphs"]))+('</blockquote>' if s.get('quotation') else '')+comments_html(s.get('comments', []), i)+"</section>"
         for i, s in enumerate(a["sections"])
     )
-    toc = "".join((f'<a class="toc-level-{min(4,max(2,s.get("level",2)))}" href="#section-{i}">{e(s["heading"])}</a>' if s['heading'] else '')+''.join(f'<a class="toc-level-{subheadings[p]}" href="#section-{i}-heading-{j}">{e(p)}</a>' for j,p in enumerate(s['paragraphs']) if isinstance(p,str) and p in subheadings) for i,s in enumerate(a['sections'])) or '<a href="#section-0">正文</a>'
+    toc = "".join((f'<a class="toc-level-{min(4,max(2,s.get("level",2)))}" href="#section-{i}">{e(s["heading"])}</a>' if s['heading'] else '')+''.join(f'<a class="toc-level-{subheadings[p]}" href="#section-{i}-heading-{j}">{e(p)}</a>' for j,p in enumerate(s['paragraphs']) if isinstance(p,str) and p in subheadings)+(f'<a class="toc-level-3" href="#section-{i}-comments">评论区</a>' if s.get('comments') else '') for i,s in enumerate(a['sections'])) or '<a href="#section-0">正文</a>'
     summary = summary_html(a)
     reading_side = '<aside id="reading-navigation" class="sidebar article-sidebar" aria-label="本文侧栏"><section class="toc"><h2>目录</h2>'+toc+'</section>'+summary+'</aside>'
     back = f'<a class="back-results" href="{link("articles/")}">返回文章目录</a>'
