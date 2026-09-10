@@ -53,6 +53,7 @@ def create(packet_path, config_path, output_path):
     assert all(point["text"] in source_paragraphs for point in config["key_points"]), "Key points must be complete source paragraphs"
     headings = {int(key): value for key, value in config["headings"].items()}
     splits = {int(key): value for key, value in config.get("splits", {}).items()}
+    split_headings = {int(key): value for key, value in config.get("split_headings", {}).items()}
     comments = {index: comment for comment in config.get("comments", []) for index in range(comment["start"], comment["end"] + 1)}
     meta = {
         "slug": config.get("target_slug", item["slug"]), "title": item["title"],
@@ -74,9 +75,13 @@ def create(packet_path, config_path, output_path):
         parts = splits.get(block["paragraph"], [block["text"]])
         marked_parts = split_marked(block, parts) if block["text"] else []
         assert not (block["paragraph"] in headings and len(marked_parts) > 1), "Heading paragraphs cannot also be split"
-        for text in marked_parts:
-            if text and block["paragraph"] in headings:
-                lines.extend(["#" * headings[block["paragraph"]] + " " + text, ""])
+        levels = split_headings.get(block["paragraph"], [0] * len(marked_parts))
+        assert len(levels) == len(marked_parts), "Split heading levels must match paragraph parts"
+        assert not (block["paragraph"] in headings and block["paragraph"] in split_headings), "Use one heading configuration per paragraph"
+        assert all(level in {0, 2, 3, 4} for level in levels), "Split heading levels must be 0 or 2-4"
+        for text, level in zip(marked_parts, levels):
+            if text and (block["paragraph"] in headings or level):
+                lines.extend(["#" * (headings.get(block["paragraph"]) or level) + " " + text, ""])
             elif text:
                 lines.extend([text, ""])
         for image in block["images"]:
