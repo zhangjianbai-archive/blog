@@ -2,7 +2,7 @@
 {
   "slug": "collection-02-0000",
   "title": "一个句号：我与今日学堂的前世今生",
-  "author": "明颖",
+  "author": "聪颖",
   "source": "2聪颖合集.docx",
   "source_start": 0,
   "source_end": 122,
