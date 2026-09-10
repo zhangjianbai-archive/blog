@@ -65,7 +65,7 @@ def verify(markdown_path, source_item):
     paragraphs = []
     markdown_paragraphs = []
     images = []
-    for part in re.split(r"\n\s*\n", text.strip()):
+    for part in re.split(r"\n\s*\n", text.strip("\n")):
         if part.startswith("<!-- 原文评论"):
             continue
         value = re.sub(r"^#{2,4} ", "", part)
@@ -91,7 +91,7 @@ def apply(markdown_path):
     body = body.split("<!-- 原文开始 -->", 1)[1]
     sections = [{"heading": "", "paragraphs": []}]
     active_comment = None
-    for part in re.split(r"\n\s*\n", body.strip()):
+    for part in re.split(r"\n\s*\n", body.strip("\n")):
         comment_start = re.fullmatch(r"<!-- 原文评论开始 (\{.*\}) -->", part, re.S)
         if comment_start:
             active_comment = {**json.loads(comment_start.group(1)), "paragraphs": []}
