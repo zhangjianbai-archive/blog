@@ -57,6 +57,10 @@ def create(packet_path, config_path, output_path):
     headings = {int(key): value for key, value in config["headings"].items()}
     splits = {int(key): value for key, value in config.get("splits", {}).items()}
     split_headings = {int(key): value for key, value in config.get("split_headings", {}).items()}
+    section_titles = {int(key): value for key, value in config.get("section_titles", {}).items()}
+    assert all(isinstance(item.get("text"), str) and item["text"].strip()
+               and item.get("level", 2) in {2, 3, 4}
+               for item in section_titles.values()), "Invalid editorial section title"
     comments = {index: comment for comment in config.get("comments", []) for index in range(comment["start"], comment["end"] + 1)}
     meta = {
         "slug": config.get("target_slug", item["slug"]), "title": item["title"],
@@ -68,6 +72,12 @@ def create(packet_path, config_path, output_path):
     lines = ["<!--ARCHIVE-META", json.dumps(meta, ensure_ascii=False, indent=2), "-->", "", f"# {item['title']}", "", "<!-- 原文开始 -->", ""]
     active_comment = None
     for index, block in enumerate(item["blocks"]):
+        if block["paragraph"] in section_titles:
+            title = section_titles[block["paragraph"]]
+            lines.extend([
+                f"<!-- 编辑目录标题 {json.dumps(title, ensure_ascii=False)} -->",
+                "",
+            ])
         comment = comments.get(index)
         if comment != active_comment:
             if active_comment is not None:
@@ -107,6 +117,8 @@ def verify(markdown_path, source_item, splits=None):
     for part in re.split(r"\n\s*\n", text.strip("\n")):
         if part.startswith("<!-- 原文评论"):
             continue
+        if part.startswith("<!-- 编辑目录标题 "):
+            continue
         value = re.sub(r"^#{2,4} ", "", part)
         if value.startswith("!["):
             image = re.fullmatch(r"!\[.*\]\(/blog/(assets/articles/docx/[a-z0-9]+\.(?:png|jpg|webp))\)", value)
@@ -134,6 +146,11 @@ def apply(markdown_path):
     sections = [{"heading": "", "paragraphs": []}]
     active_comment = None
     for part in re.split(r"\n\s*\n", body.strip("\n")):
+        editorial_heading = re.fullmatch(r"<!-- 编辑目录标题 (\{.*\}) -->", part, re.S)
+        if editorial_heading:
+            title = json.loads(editorial_heading.group(1))
+            sections.append({"heading": title["text"], "paragraphs": [], "level": title.get("level", 2)})
+            continue
         comment_start = re.fullmatch(r"<!-- 原文评论开始 (\{.*\}) -->", part, re.S)
         if comment_start:
             active_comment = {**json.loads(comment_start.group(1)), "paragraphs": []}
