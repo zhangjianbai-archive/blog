@@ -11,7 +11,6 @@
     "63": 3,
     "72": 3,
     "78": 3,
-    "84": 2,
     "85": 3,
     "89": 3,
     "96": 3,
@@ -122,5 +121,11 @@
       "end": 141
     }
   ],
-  "overview_kind": "editorial"
+  "overview_kind": "editorial",
+  "section_titles": {
+    "84": {
+      "level": 2,
+      "text": "舆论优势能否持续"
+    }
+  }
 }

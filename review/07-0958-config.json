@@ -2,7 +2,6 @@
   "slug": "collection-07-0958",
   "source": "7守其黑合集.docx",
   "headings": {
-    "965": 2,
     "972": 2,
     "982": 2,
     "984": 2,
@@ -153,5 +152,11 @@
       "end": 60
     }
   ],
-  "overview_kind": "editorial"
+  "overview_kind": "editorial",
+  "section_titles": {
+    "965": {
+      "level": 2,
+      "text": "从支持到被排斥"
+    }
+  }
 }
