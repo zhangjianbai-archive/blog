@@ -162,7 +162,7 @@ def row(a, preview=False):
 def empty():
     return '<p class="empty">暂无文章</p>'
 
-page("", "首页", layout((''.join(row(a, preview=True) for a in articles[:5])+f'<a class="more-posts" href="{link("articles/")}?readable=1">全部已上架文章 →</a>') if articles else empty()), "首页")
+page("", "首页", layout((''.join(row(a, preview=True) for a in articles[:5])+f'<a class="more-posts" href="{link("articles/")}">全部文章 →</a>') if articles else empty()), "首页")
 
 def title_row(item, searchable=False):
     search = [item["title"], item["author"], item["kind"]]
@@ -177,7 +177,7 @@ def title_row(item, searchable=False):
     tag_link = filter_link("tag",tag["slug"],tag.get("label",tag["title"]),"entry-tag")
     if item["author"] == tag.get("label", tag["title"]):
         tag_link = ''
-    status = '<span class="entry-status readable">可阅读全文</span>' if item.get("article") else '<span class="entry-status">仅标题</span>'
+    status = ""
     kind = f'<span class="entry-kind">{e(item["kind"])}</span>' if item["kind"] != '文章' else ''
     attrs = f' data-search="{e(" ".join(search),quote=True)}" data-readable="{str(bool(item.get("article"))).lower()}"' if searchable else ''
     if searchable:
@@ -210,7 +210,7 @@ def directory_body(number):
     prev_attrs = f'href="{link(prev_path)}"' if number > 1 else 'aria-disabled="true"'
     next_attrs = f'href="{link(f"articles/page/{number+1}/")}"' if number < pages else 'aria-disabled="true"'
     return f'''<h1 class="page-title">文章目录</h1>
-<div class="catalog-toolbar"><p class="result-count" id="result-count" role="status">{len(catalog)} 个标题 · {len(articles)} 篇可阅读全文</p><label><input type="checkbox" id="readable-only"> 只看已上架</label></div>
+<div class="catalog-toolbar"><p class="result-count" id="result-count" role="status">共 {len(catalog)} 篇文章</p></div>
 {category_jumps()}<details class="filter-picker"><summary>专题、合集与作者</summary><div class="filter-options"><label>专题<select data-select="topic"><option value="">全部专题</option>{''.join(f'<option value="{f["slug"]}">{e(f["title"])}</option>' for f in features)}</select></label><label>合集<select data-select="tag"><option value="">全部合集</option>{''.join(f'<option value="{t["slug"]}">{e(t["title"])}</option>' for t in tags)}</select></label><label>作者<select data-select="author"><option value="">全部作者</option>{''.join(f'<option value="{e(a,quote=True)}">{e(a)}</option>' for a in sorted({a["author"] for a in catalog if a["author"]}))}</select></label></div></details>
 <div class="active-filters" id="active-filters" aria-label="当前筛选"></div><button id="clear-search" hidden>清空筛选</button>
 <div id="results"><ul class="catalog-list">{''.join(title_row(a, searchable=True).replace('class="catalog-entry"', 'class="catalog-entry"'+(' hidden' if not (number-1)*20 <= i < number*20 else '')) for i,a in enumerate(catalog))}</ul></div>

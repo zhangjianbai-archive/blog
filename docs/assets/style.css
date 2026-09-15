@@ -220,3 +220,5 @@ footer{margin:0 28px;padding:14px 0}
 .page-jump input{width:64px;min-width:0;padding:6px;border:1px solid #bbb8b0;background:transparent;font:inherit}
 .page-jump button{padding:6px 12px}
 @media(max-width:650px){.blog-layout>.sidebar{display:none}.page-jump{flex-basis:100%;justify-content:center}}
+
+@media(max-width:650px){.site-header nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%;gap:6px 10px}.site-header nav a{text-align:center;padding:7px 0;font-size:14px}}

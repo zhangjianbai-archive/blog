@@ -76,7 +76,7 @@ class RenderedSite(unittest.TestCase):
         for number in range(1, (total+19)//20+1):
             path = ROOT/'docs/articles'/('index.html' if number == 1 else f'page/{number}/index.html')
             page = Page(path.read_text(encoding='utf-8'))
-            self.assertTrue({'results','readable-only','prev-page','next-page','search'} <= page.ids)
+            self.assertTrue({'results','page-number','page-jump','prev-page','next-page','search'} <= page.ids)
             self.assertEqual(page.visible_rows, min(20, total-(number-1)*20))
 
 if __name__ == '__main__':

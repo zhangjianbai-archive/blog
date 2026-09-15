@@ -1,7 +1,7 @@
 (() => {
   const version=document.querySelector('meta[name="site-version"]')?.content;
   const base='/blog/articles/', results=document.querySelector('#results'), field=document.querySelector('#search');
-  const keys=['q','category','topic','tag','author','readable'];
+  const keys=['q','category','topic','tag','author'];
   const normalize=t=>t.normalize('NFKC').toLocaleLowerCase().trim();
   let saved; try { saved=JSON.parse(sessionStorage.getItem('article-return')); } catch {}
   const heading=document.querySelector('.article-heading'), side=document.querySelector('.article-sidebar'), toggle=document.querySelector('#toggle-toc');
@@ -37,27 +37,28 @@
     }
     restore();return;
   }
-  const rows=[...results.querySelectorAll('.catalog-entry')], readable=document.querySelector('#readable-only'), clear=document.querySelector('#clear-search'), chips=document.querySelector('#active-filters');
+  const rows=[...results.querySelectorAll('.catalog-entry')], clear=document.querySelector('#clear-search'), chips=document.querySelector('#active-filters');
   const prev=document.querySelector('#prev-page'),next=document.querySelector('#next-page'),pageNumber=document.querySelector('#page-number'),size=20;
   let state=new URLSearchParams(location.search);
   const pathPage=()=>location.pathname.match(/\/page\/(\d+)\//)?.[1];
   if(pathPage())state.set('page',pathPage());
   if(location.hash&&!state.has('category'))state.set('category',location.hash.slice(1));
   if(state.get('topic')){const r=rows.find(r=>r.dataset.topic===state.get('topic'));if(r)state.set('category',r.dataset.category);}
-  const labels={q:'搜索',category:'议题',topic:'专题',tag:'合集',author:'作者',readable:'只看已上架'};
+  const labels={q:'搜索',category:'议题',topic:'专题',tag:'合集',author:'作者'};
   function label(k,v){return [...document.querySelectorAll(`[data-select="${k}"] option`)].find(o=>o.value===v)?.textContent||[...document.querySelectorAll(`[data-filter="${k}"]`)].find(a=>a.dataset.value===v)?.textContent||v;}
   function render(mode){
+    state.delete("readable");
     if(version)state.set("v",version);
     const terms=normalize(state.get('q')||'').split(/\s+/).filter(Boolean);
-    const matched=rows.filter(r=>terms.every(t=>normalize(r.dataset.search).includes(t))&&(!state.get('readable')||r.dataset.readable==='true')&&['category','topic','author'].every(k=>!state.get(k)||r.dataset[k]===state.get(k))&&(!state.get('tag')||r.dataset.tag.split(' ').includes(state.get('tag'))));
+    const matched=rows.filter(r=>terms.every(t=>normalize(r.dataset.search).includes(t))&&['category','topic','author'].every(k=>!state.get(k)||r.dataset[k]===state.get(k))&&(!state.get('tag')||r.dataset.tag.split(' ').includes(state.get('tag'))));
     const pages=Math.max(1,Math.ceil(matched.length/size)),page=Math.max(1,Math.min(pages,parseInt(state.get('page'),10)||1));
     if(page>1)state.set('page',String(page));else state.delete('page');
     const shown=new Set(matched.slice((page-1)*size,page*size));rows.forEach(r=>r.hidden=!shown.has(r));
-    field.value=state.get('q')||'';readable.checked=state.get('readable')==='1';
+    field.value=state.get('q')||'';
     document.querySelectorAll('[data-select]').forEach(s=>s.value=state.get(s.dataset.select)||'');
     document.querySelectorAll('[data-filter]').forEach(a=>{if((state.get(a.dataset.filter)||'')===a.dataset.value)a.setAttribute('aria-current','true');else a.removeAttribute('aria-current');});
-    chips.replaceChildren();keys.filter(k=>state.get(k)).forEach(k=>{const b=document.createElement('button'),t=k==='readable'?labels[k]:`${labels[k]}：${label(k,state.get(k))}`;b.textContent=t+' ×';b.setAttribute('aria-label','取消'+t);b.addEventListener('click',()=>change(k,''));chips.append(b);});
-    clear.hidden=!keys.some(k=>state.get(k));document.querySelector('#result-count').textContent=`${matched.length} 个标题 · ${matched.filter(r=>r.dataset.readable==='true').length} 篇可阅读全文`;
+    chips.replaceChildren();keys.filter(k=>state.get(k)).forEach(k=>{const b=document.createElement('button'),t=`${labels[k]}：${label(k,state.get(k))}`;b.textContent=t+' ×';b.setAttribute('aria-label','取消'+t);b.addEventListener('click',()=>change(k,''));chips.append(b);});
+    clear.hidden=!keys.some(k=>state.get(k));document.querySelector('#result-count').textContent=`共 ${matched.length} 篇文章`;
     document.querySelector('#empty').hidden=matched.length!==0;document.querySelector('#page-count').textContent=`${page} / ${pages}`;
     for(const [el,n,disabled] of [[prev,page-1,page===1],[next,page+1,page===pages]]){
       el.setAttribute('aria-disabled',String(disabled));
@@ -83,7 +84,6 @@
   document.querySelectorAll('[data-select]').forEach(s=>s.addEventListener('change',()=>change(s.dataset.select,s.value)));
   field.addEventListener('input',()=>change('q',field.value,'replaceState'));
   document.querySelector('#search-form').addEventListener('submit',e=>{e.preventDefault();change('q',field.value,'replaceState');});
-  readable.addEventListener('change',()=>change('readable',readable.checked?'1':''));
   clear.addEventListener('click',()=>{state=new URLSearchParams();render('pushState');});
   for(const [el,delta] of [[prev,-1],[next,1]])el.addEventListener('click',e=>{if(e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;e.preventDefault();if(el.getAttribute('aria-disabled')==='true')return;change('page',String((Number(state.get('page'))||1)+delta));document.querySelector('.page-title').scrollIntoView();});
   document.querySelector('#page-jump').addEventListener('submit',e=>{e.preventDefault();if(!e.currentTarget.reportValidity())return;change('page',pageNumber.value);document.querySelector('.page-title').scrollIntoView({block:'start'});});
