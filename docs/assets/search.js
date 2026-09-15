@@ -13,6 +13,7 @@
     const reset=()=>panel(!mobile.matches);reset();mobile.addEventListener('change',reset);
     toggle.addEventListener('click',()=>{if(mobile.matches)panel(!side.classList.contains('is-open'));else{side.scrollTop=0;side.querySelector('a')?.focus({preventScroll:true});}});
     document.addEventListener('keydown',e=>{if(e.key==='Escape'&&mobile.matches&&side.classList.contains('is-open')){panel(false);toggle.focus();}});
+    document.addEventListener('click',e=>{if(mobile.matches&&side.classList.contains('is-open')&&!side.contains(e.target)&&!toggle.contains(e.target))panel(false);});
     side.addEventListener('click',e=>{if(e.target.closest('a')&&mobile.matches)panel(false);});
     const anchors=[...side.querySelectorAll('.toc a')];
     const targets=anchors.map(a=>document.getElementById(a.hash.slice(1)));

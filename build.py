@@ -129,7 +129,7 @@ def summary_html(a):
     points = item.get("points", [])
     if not points:
         return ""
-    return '<section class="article-summary"><h2>文章总览</h2><p class="summary-credit">档案馆根据原文整理</p><ul>'+''.join(f'<li>{e(point["text"])} <a href="#section-{point["section"]}" aria-label="阅读相关段落">↗</a></li>' for point in points)+'</ul></section>'
+    return '<section class="article-summary"><h2>文章总览</h2><p class="summary-credit">档案馆根据原文整理</p><ul>'+''.join(f'<li>{e(point["text"])} <a href="#section-{point["section"]}" class="summary-source">查看原文段落</a></li>' for point in points)+'</ul></section>'
 
 def metadata(a):
     category = next(c for c in categories if c["slug"] == a["category"])
@@ -336,9 +336,9 @@ for a in articles:
     )
     toc = "".join((f'<a class="toc-level-{min(4,max(2,s.get("level",2)))}" href="#section-{i}">{e(s["heading"])}</a>' if s['heading'] else '')+''.join(f'<a class="toc-level-{subheadings[p]}" href="#section-{i}-heading-{j}">{e(p)}</a>' for j,p in enumerate(s['paragraphs']) if isinstance(p,str) and p in subheadings)+(f'<a class="toc-level-3" href="#section-{i}-comments">评论区</a>' if s.get('comments') else '') for i,s in enumerate(a['sections'])) or '<a href="#section-0">正文</a>'
     summary = summary_html(a)
-    reading_side = '<aside id="reading-navigation" class="sidebar article-sidebar" aria-label="本文侧栏"><section class="toc"><h2>目录</h2>'+toc+'</section>'+summary+'</aside>'
+    reading_side = '<aside id="reading-navigation" class="sidebar article-sidebar" aria-label="本文侧栏"><section class="toc"><h2>目录</h2>'+toc+'</section></aside>'
     back = f'<a class="back-results" href="{link("articles/")}">返回文章目录</a>'
-    article_body = f'<article><header class="article-heading">{back}<h1 class="post-title article-title">{e(a["title"])}</h1>{metadata(a)}</header>'+f'<div class="prose">{sections}</div>{article_tags(a)}<div class="reading-footer">{back}</div></article><div class="reading-controls" aria-label="阅读工具"><button type="button" id="toggle-toc" aria-controls="reading-navigation" aria-expanded="false">目录</button><a href="#top" id="back-top">回到顶部 ↑</a></div>'
+    article_body = f'<article><header class="article-heading">{back}<h1 class="post-title article-title">{e(a["title"])}</h1>{metadata(a)}</header>'+summary+f'<div class="prose">{sections}</div>{article_tags(a)}<div class="reading-footer">{back}</div></article><div class="reading-controls" aria-label="阅读工具"><button type="button" id="toggle-toc" aria-controls="reading-navigation" aria-expanded="false">目录</button><a href="#top" id="back-top">回到顶部 ↑</a></div>'
     article_body += series_html(a)+related_html(a)
     url=ORIGIN+link('articles/'+a['slug']+'/')
     description=' '.join(a.get('excerpt',[])) or a['title']

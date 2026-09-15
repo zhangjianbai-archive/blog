@@ -222,3 +222,11 @@ footer{margin:0 28px;padding:14px 0}
 @media(max-width:650px){.blog-layout>.sidebar{display:none}.page-jump{flex-basis:100%;justify-content:center}}
 
 @media(max-width:650px){.site-header nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%;gap:6px 10px}.site-header nav a{text-align:center;padding:7px 0;font-size:14px}}
+
+/* The overview is part of the article introduction on every screen size. */
+.main-column .article-summary{margin:20px 0 24px;padding:16px 20px;border:1px solid var(--line);background:#f2f0ea;font-size:15px;line-height:1.85}
+.main-column .article-summary h2{font-size:18px;margin:0 0 4px;line-height:1.5}
+.main-column .article-summary ul{margin:10px 0 0;padding-left:20px}
+.main-column .article-summary li{margin:8px 0}
+.summary-source{display:inline-block;font-size:12px;margin-left:6px;text-decoration:underline;text-underline-offset:3px}
+@media(max-width:650px){.main-column .article-summary{padding:14px 16px;font-size:15px}.summary-source{padding:4px 0}}
