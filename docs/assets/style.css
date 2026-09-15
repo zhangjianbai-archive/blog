@@ -213,3 +213,10 @@ footer{margin:0 28px;padding:14px 0}
 .source-comments .comment header{font-size:13px;font-weight:700;color:var(--muted);margin-bottom:8px}
 .source-comments .comment p{margin:10px 0}
 .source-comments .comment-children{margin:10px 0 0 22px;padding-left:14px;border-left:1px solid var(--line)}
+
+/* Page selection and a focused mobile reading layout. */
+.pagination{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px}
+.page-jump{display:flex;align-items:center;gap:8px;font-size:14px}
+.page-jump input{width:64px;min-width:0;padding:6px;border:1px solid #bbb8b0;background:transparent;font:inherit}
+.page-jump button{padding:6px 12px}
+@media(max-width:650px){.blog-layout>.sidebar{display:none}.page-jump{flex-basis:100%;justify-content:center}}

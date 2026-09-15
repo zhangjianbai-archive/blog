@@ -152,8 +152,8 @@ def row(a, preview=False):
     text += [p if isinstance(p, str) else p.get("alt", "") for s in a["sections"] for p in [s["heading"], *s["paragraphs"]]]
     search = e(" ".join(text), quote=True)
     url = link("articles/"+a["slug"]+"/")
-    overview = presentation.get(a["slug"], {})
-    excerpt = f'<p>{e(overview["excerpt"])}</p>' if preview and overview.get("kind") == "editorial" else ""
+    previews = json.loads((ROOT / "content/home-previews.json").read_text(encoding="utf-8"))
+    excerpt = f'<p>{e(previews[a["slug"]])}</p>' if preview else ""
     return f'''<article class="post" data-search="{search}">
 <h2 class="post-title"><a href="{url}">{e(a["title"])}</a></h2>
 {metadata(a)}{('<div class="excerpt">'+excerpt+'</div>') if preview else ""}
@@ -214,7 +214,7 @@ def directory_body(number):
 {category_jumps()}<details class="filter-picker"><summary>专题、合集与作者</summary><div class="filter-options"><label>专题<select data-select="topic"><option value="">全部专题</option>{''.join(f'<option value="{f["slug"]}">{e(f["title"])}</option>' for f in features)}</select></label><label>合集<select data-select="tag"><option value="">全部合集</option>{''.join(f'<option value="{t["slug"]}">{e(t["title"])}</option>' for t in tags)}</select></label><label>作者<select data-select="author"><option value="">全部作者</option>{''.join(f'<option value="{e(a,quote=True)}">{e(a)}</option>' for a in sorted({a["author"] for a in catalog if a["author"]}))}</select></label></div></details>
 <div class="active-filters" id="active-filters" aria-label="当前筛选"></div><button id="clear-search" hidden>清空筛选</button>
 <div id="results"><ul class="catalog-list">{''.join(title_row(a, searchable=True).replace('class="catalog-entry"', 'class="catalog-entry"'+(' hidden' if not (number-1)*20 <= i < number*20 else '')) for i,a in enumerate(catalog))}</ul></div>
-<div id="empty" class="empty" hidden><p>没有匹配的文章，请调整筛选条件。</p></div><nav class="pagination" aria-label="结果分页"><a id="prev-page" {prev_attrs}>上一页</a><span id="page-count" role="status">{number} / {pages}</span><a id="next-page" {next_attrs}>下一页</a></nav>'''
+<div id="empty" class="empty" hidden><p>没有匹配的文章，请调整筛选条件。</p></div><nav class="pagination" aria-label="结果分页"><a id="prev-page" {prev_attrs}>上一页</a><span id="page-count" role="status">{number} / {pages}</span><a id="next-page" {next_attrs}>下一页</a><form id="page-jump" class="page-jump" action="{link("articles/")}" method="get"><label for="page-number">跳至</label><input id="page-number" name="page" type="number" min="1" max="{pages}" value="{number}" required inputmode="numeric" aria-label="页码"><span>页</span><button type="submit">跳转</button></form></nav>'''
 
 for number in range(1, (len(catalog)+19)//20+1):
     path = 'articles/' if number == 1 else f'articles/page/{number}/'

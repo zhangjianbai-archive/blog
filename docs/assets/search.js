@@ -38,7 +38,7 @@
     restore();return;
   }
   const rows=[...results.querySelectorAll('.catalog-entry')], readable=document.querySelector('#readable-only'), clear=document.querySelector('#clear-search'), chips=document.querySelector('#active-filters');
-  const prev=document.querySelector('#prev-page'),next=document.querySelector('#next-page'),size=20;
+  const prev=document.querySelector('#prev-page'),next=document.querySelector('#next-page'),pageNumber=document.querySelector('#page-number'),size=20;
   let state=new URLSearchParams(location.search);
   const pathPage=()=>location.pathname.match(/\/page\/(\d+)\//)?.[1];
   if(pathPage())state.set('page',pathPage());
@@ -64,6 +64,7 @@
       if(disabled){el.removeAttribute('href');}else{const params=new URLSearchParams(state);params.set('page',String(n));el.href=keys.some(k=>state.get(k))?base+'?'+params:(n===1?base:base+'page/'+n+'/');}
     }
     document.querySelector('.pagination').hidden=pages===1;
+    pageNumber.max=String(pages);pageNumber.value=String(page);
     const filtered=keys.some(k=>state.get(k)),path=!filtered&&page>1?base+'page/'+page+'/':base;
     document.title=`文章目录${!filtered&&page>1?' · 第 '+page+' 页':''} · 张健柏档案馆`;
     const canonical=document.querySelector('link[rel="canonical"]');if(canonical){const u=new URL(canonical.href);u.pathname=path;canonical.href=u.href;}
@@ -85,5 +86,6 @@
   readable.addEventListener('change',()=>change('readable',readable.checked?'1':''));
   clear.addEventListener('click',()=>{state=new URLSearchParams();render('pushState');});
   for(const [el,delta] of [[prev,-1],[next,1]])el.addEventListener('click',e=>{if(e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;e.preventDefault();if(el.getAttribute('aria-disabled')==='true')return;change('page',String((Number(state.get('page'))||1)+delta));document.querySelector('.page-title').scrollIntoView();});
+  document.querySelector('#page-jump').addEventListener('submit',e=>{e.preventDefault();if(!e.currentTarget.reportValidity())return;change('page',pageNumber.value);document.querySelector('.page-title').scrollIntoView({block:'start'});});
   addEventListener('popstate',()=>{state=new URLSearchParams(location.search);if(pathPage())state.set('page',pathPage());render();});render('replaceState');restore();
 })();
