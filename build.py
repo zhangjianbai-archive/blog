@@ -348,7 +348,7 @@ for a in articles:
         schema['author']['url']=ORIGIN+link('authors/')+'#'+author_id(a['author'])
     # Imported dates do not reliably distinguish original publication from edits.
     # Omit them until individually verified instead of inventing timestamps.
-    page("articles/"+a["slug"]+"/", a["title"], layout(article_body, reading_side), "文章目录",description=description,schema=schema)
+    page("articles/"+a["slug"]+"/", presentation.get(a["slug"], {}).get("seo_title", a["title"]), layout(article_body, reading_side), "文章目录",description=description,schema=schema)
 
 def inline_markdown(text):
     # Render the Markdown constructs used in the original introduction, without editing its source.

@@ -2,6 +2,7 @@
 import json
 import re
 import unittest
+from html import escape, unescape
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -45,6 +46,24 @@ def normalized(text):
     return re.sub(r'\s+', '', text)
 
 class RenderedSite(unittest.TestCase):
+    def test_search_titles_and_static_overviews(self):
+        presentation = json.loads((ROOT/'content/presentation.json').read_text(encoding='utf-8'))
+        for article in json.loads((ROOT/'content/articles.json').read_text(encoding='utf-8')):
+            with self.subTest(slug=article['slug']):
+                item = presentation[article['slug']]
+                html = (ROOT/'docs/articles'/article['slug']/'index.html').read_text(encoding='utf-8')
+                self.assertIn('<title>'+escape(item['seo_title'])+' · 张健柏档案馆</title>', html)
+                heading = re.search(r'<h1\b[^>]*>(.*?)</h1>', html).group(1)
+                self.assertEqual(unescape(heading), article['title'])
+                schema = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', html, re.S).group(1))
+                self.assertEqual(schema['headline'], article['title'])
+                self.assertEqual(schema['description'], item['excerpt'])
+                summary = re.search(r'<section class="article-summary">(.*?)</section>', html, re.S).group(1)
+                for point in item['points']:
+                    self.assertIn(escape(point['text']), summary)
+                    self.assertIn(f'href="#section-{point["section"]}"', summary)
+                    self.assertTrue(article['sections'][point['section']]['paragraphs'])
+
     def test_original_article_text(self):
         for article in json.loads((ROOT/'content/articles.json').read_text(encoding='utf-8')):
             expected = []

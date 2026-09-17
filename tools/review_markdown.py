@@ -69,6 +69,8 @@ def create(packet_path, config_path, output_path):
         "description": config["description"], "key_points": config["key_points"],
         "overview_kind": "editorial",
     }
+    if config.get("seo_title"):
+        meta["seo_title"] = config["seo_title"]
     lines = ["<!--ARCHIVE-META", json.dumps(meta, ensure_ascii=False, indent=2), "-->", "", f"# {item['title']}", "", "<!-- 原文开始 -->", ""]
     active_comment = None
     for index, block in enumerate(item["blocks"]):
@@ -179,9 +181,12 @@ def apply(markdown_path):
     presentation_path = ROOT / "content/presentation.json"
     presentation = json.loads(presentation_path.read_text(encoding="utf-8"))
     presentation[metadata["slug"]] = {
+        **presentation.get(metadata["slug"], {}),
         "excerpt": metadata["description"], "points": metadata["key_points"],
         "kind": metadata.get("overview_kind"),
     }
+    if metadata.get("seo_title"):
+        presentation[metadata["slug"]]["seo_title"] = metadata["seo_title"]
     presentation_path.write_text(json.dumps(presentation, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
