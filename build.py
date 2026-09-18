@@ -13,6 +13,8 @@ OUT = ROOT / "docs"
 BASE = "/blog"
 ORIGIN = "https://zhangjianbai-archive.github.io"
 NAME = "张健柏档案馆"
+GOOGLE_SITE_VERIFICATION = "LacAPiWNG9OXyYZK8H3Flo3atqUjvXdGNjPjn8uwhak"
+INDEXNOW_KEY = "a7f92a255dd52a874d5dcd8a98f9103f"
 VERSION = hashlib.sha256(b"".join(p.read_bytes() for p in [ROOT / "build.py", *sorted((ROOT / "content").glob("*")), ROOT / "docs/assets/style.css", ROOT / "docs/assets/search.js"] if p.is_file())).hexdigest()[:12]
 articles = json.loads((ROOT / "content/articles.json").read_text(encoding="utf-8"))
 catalog = json.loads((ROOT / "content/catalog.json").read_text(encoding="utf-8"))
@@ -71,6 +73,7 @@ def page(path, title, body, active="", noindex=False, description=None, schema=N
     html = f'''<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{e(title)} · {NAME}</title><meta name="description" content="{e(description)}">{structured}
+{f'<meta name="google-site-verification" content="{GOOGLE_SITE_VERIFICATION}">' if not path else ''}
 <link rel="canonical" href="{ORIGIN}{link(path)}"><meta name="site-version" content="{VERSION}"><meta name="theme-color" content="#faf9f6">
 <meta property="og:title" content="{e(title)} · {NAME}"><meta property="og:description" content="{e(description)}"><meta property="og:url" content="{ORIGIN}{link(path)}"><meta property="og:type" content="{'article' if schema and schema.get('@type') == 'BlogPosting' else 'website'}"><meta property="og:site_name" content="{NAME}"><meta name="twitter:card" content="summary">
 {robots}<link rel="icon" type="image/svg+xml" href="{link('assets/favicon.svg')}">
@@ -435,6 +438,8 @@ urls += ['authors/'+quote(name, safe='')+'/' for name in author_names]
 urls += ['features/'+f['slug']+'/' for f in features]
 urls += [f'articles/page/{n}/' for n in range(2,(len(catalog)+19)//20+1)]
 (OUT/"sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+''.join(f'<url><loc>{ORIGIN}{link(p)}</loc></url>' for p in urls)+"</urlset>", encoding="utf-8")
+(OUT/"robots.txt").write_text("User-agent: *\nAllow: /\nSitemap: "+ORIGIN+link("sitemap.xml")+"\n", encoding="utf-8")
+(OUT/(INDEXNOW_KEY+".txt")).write_text(INDEXNOW_KEY, encoding="utf-8")
 
 class Links(HTMLParser):
     def handle_starttag(self, tag, attrs):
