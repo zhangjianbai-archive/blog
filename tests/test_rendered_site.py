@@ -5,7 +5,7 @@ import unittest
 from html import escape, unescape
 from html.parser import HTMLParser
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, quote, parse_qs
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -46,6 +46,30 @@ def normalized(text):
     return re.sub(r'\s+', '', text)
 
 class RenderedSite(unittest.TestCase):
+    def test_static_author_and_topic_pages(self):
+        catalog = json.loads((ROOT/'content/catalog.json').read_text(encoding='utf-8'))
+        features = json.loads((ROOT/'content/features.json').read_text(encoding='utf-8'))
+        sitemap = (ROOT/'docs/sitemap.xml').read_text(encoding='utf-8')
+        groups = [('authors', name, [x for x in catalog if x['author'] == name]) for name in sorted({x['author'] for x in catalog if x['author']})]
+        groups += [('features', f['slug'], [x for x in catalog if x['topic'] == f['slug']]) for f in features]
+        for folder, key, items in groups:
+            with self.subTest(folder=folder, key=key):
+                html = (ROOT/'docs'/folder/key/'index.html').read_text(encoding='utf-8')
+                url = 'https://zhangjianbai-archive.github.io/blog/'+folder+'/'+quote(key, safe='')+'/'
+                self.assertIn('<link rel="canonical" href="'+url+'">', html)
+                self.assertIn('<loc>'+url+'</loc>', sitemap)
+                listing = re.search(r'<ul class="catalog-list">(.*?)</ul>', html, re.S).group(1)
+                actual = re.findall(r'<li id="([^"]+)" class="catalog-entry"', listing)
+                self.assertEqual(actual, [x['slug'] for x in items])
+
+    def test_page_links_have_no_cache_version(self):
+        for path in (ROOT/'docs').rglob('*.html'):
+            html = path.read_text(encoding='utf-8')
+            for href in re.findall(r'<a\b[^>]*href="([^"]+)"', html):
+                url = urlsplit(unescape(href))
+                if url.path.startswith('/blog/') and not url.path.startswith('/blog/assets/'):
+                    self.assertNotIn('v', parse_qs(url.query), str(path))
+
     def test_search_titles_and_static_overviews(self):
         presentation = json.loads((ROOT/'content/presentation.json').read_text(encoding='utf-8'))
         for article in json.loads((ROOT/'content/articles.json').read_text(encoding='utf-8')):

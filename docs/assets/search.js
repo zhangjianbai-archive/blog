@@ -1,5 +1,4 @@
 (() => {
-  const version=document.querySelector('meta[name="site-version"]')?.content;
   const base='/blog/articles/', results=document.querySelector('#results'), field=document.querySelector('#search');
   const keys=['q','category','topic','tag','author'];
   const normalize=t=>t.normalize('NFKC').toLocaleLowerCase().trim();
@@ -23,7 +22,7 @@
       anchors.forEach((a,i)=>{if(i===current)a.setAttribute('aria-current','location');else a.removeAttribute('aria-current');});
     });},{passive:true});
   }
-  const listing=/^\/blog\/(?:articles\/(?:page\/\d+\/)?|topics\/[^/]+\/|tags\/[^/]+\/)$/;
+  const listing=/^\/blog\/(?:articles\/(?:page\/\d+\/)?|(?:topics|tags|features|authors)\/[^/]+\/)$/;
   if(listing.test(location.pathname))document.addEventListener('click',event=>{
     const a=event.target.closest('a');if(!a||event.defaultPrevented||event.button!==0||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;
     const u=new URL(a.href);if(u.origin===location.origin&&/^\/blog\/articles\/[^/]+\/$/.test(u.pathname)&&!a.dataset.filter){try{sessionStorage.setItem('article-return',JSON.stringify({url:location.href,scroll:scrollY,article:u.pathname}));}catch{}}
@@ -49,7 +48,7 @@
   function label(k,v){return [...document.querySelectorAll(`[data-select="${k}"] option`)].find(o=>o.value===v)?.textContent||[...document.querySelectorAll(`[data-filter="${k}"]`)].find(a=>a.dataset.value===v)?.textContent||v;}
   function render(mode){
     state.delete("readable");
-    if(version)state.set("v",version);
+    state.delete('v');
     const terms=normalize(state.get('q')||'').split(/\s+/).filter(Boolean);
     const matched=rows.filter(r=>terms.every(t=>normalize(r.dataset.search).includes(t))&&['category','topic','author'].every(k=>!state.get(k)||r.dataset[k]===state.get(k))&&(!state.get('tag')||r.dataset.tag.split(' ').includes(state.get('tag'))));
     const pages=Math.max(1,Math.ceil(matched.length/size)),page=Math.max(1,Math.min(pages,parseInt(state.get('page'),10)||1));
@@ -68,8 +67,11 @@
     document.querySelector('.pagination').hidden=pages===1;
     pageNumber.max=String(pages);pageNumber.value=String(page);
     const filtered=keys.some(k=>state.get(k)),path=!filtered&&page>1?base+'page/'+page+'/':base;
-    document.title=`文章目录${!filtered&&page>1?' · 第 '+page+' 页':''} · 张健柏档案馆`;
-    const canonical=document.querySelector('link[rel="canonical"]');if(canonical){const u=new URL(canonical.href);u.pathname=path;canonical.href=u.href;}
+    const active=keys.filter(k=>state.get(k)&&!(k==='category'&&state.get('topic')));
+    const single=active.length===1&&active[0]!=='q'?active[0]:null;
+    const target=single?[...document.querySelectorAll('[data-filter]')].find(a=>a.dataset.filter===single&&a.dataset.value===state.get(single))?.href||[...document.querySelectorAll(`[data-select="${single}"] option`)].find(o=>o.value===state.get(single))?.dataset.url:null;
+    document.title=(target?label(single,state.get(single))+(single==='author'?'的文章':''):`文章目录${!filtered&&page>1?' · 第 '+page+' 页':''}`)+' · 张健柏档案馆';
+    const canonical=document.querySelector('link[rel="canonical"]');if(canonical)canonical.href=new URL(target||path,location.origin).href;
     if(mode){const u=new URL(path,location.origin),params=new URLSearchParams(state);if(!filtered)params.delete('page');u.search=params.toString();history[mode](null,'',u);}
   }
   function change(k,v,mode='pushState'){

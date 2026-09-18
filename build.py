@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from html import escape as e, unescape
 from html.parser import HTMLParser
-from urllib.parse import urlsplit, urlencode, urlunsplit
+from urllib.parse import urlsplit, urlencode, quote, unquote
 import struct
 
 ROOT = Path(__file__).resolve().parent
@@ -46,8 +46,14 @@ for old in OUT.rglob("*.html"):
 def link(path=""):
     return BASE + "/" + path.lstrip("/")
 
+def filter_target(key, value):
+    folders = {'category': 'topics', 'tag': 'tags', 'topic': 'features', 'author': 'authors'}
+    if value and key in folders:
+        return link(folders[key]+'/'+quote(value, safe='')+'/')
+    return link('articles/')+'?'+urlencode({key:value})
+
 def filter_link(key, value, label, css=""):
-    target = link(('topics/' if key == 'category' else 'tags/')+value+'/') if value and key in {'category','tag'} else link('articles/')+'?'+urlencode({key:value})
+    target = filter_target(key, value)
     return f'<a class="{css}" data-filter="{key}" data-value="{e(value, quote=True)}" href="{e(target, quote=True)}">{e(label)}</a>'
 
 def page(path, title, body, active="", noindex=False, description=None, schema=None):
@@ -69,18 +75,11 @@ def page(path, title, body, active="", noindex=False, description=None, schema=N
 <body id="top"><a class="skip" href="#main">跳至正文</a><div class="shell">
 <header class="site-header"><div class="site-identity"><a class="brand" href="{link()}">{NAME}</a>
 <form id="search-form" class="header-search" action="{link('articles/')}" method="get" role="search" aria-label="站内搜索">
-<input type="hidden" name="v" value="{VERSION}"><label class="sr-only" for="search">搜索文章</label><input id="search" name="q" type="search" placeholder="搜索文章" autocomplete="off"><button type="submit">搜索</button></form>
+<label class="sr-only" for="search">搜索文章</label><input id="search" name="q" type="search" placeholder="搜索文章" autocomplete="off"><button type="submit">搜索</button></form>
 </div><nav aria-label="主导航">{nav}</nav></header>
 <main id="main">{body}</main>
 <footer><span>{NAME}</span><a href="https://github.com/zhangjianbai-archive/blog">GitHub</a></footer></div></body></html>'''
-    def version_link(match):
-        prefix, url = match.groups()
-        parsed = urlsplit(unescape(url))
-        if parsed.path.startswith(BASE + "/") and not parsed.path.startswith(BASE + "/assets/"):
-            url = e(urlunsplit(parsed._replace(query=parsed.query+('&' if parsed.query else '')+'v='+VERSION)), quote=True)
-        return prefix + url + '"'
-    html = re.sub(r'(<a\b[^>]*?href=")([^"#]+)"', version_link, html)
-    target = OUT / (path + "index.html" if not path or path.endswith("/") else path)
+    target = OUT / unquote(path + "index.html" if not path or path.endswith("/") else path)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(html, encoding="utf-8")
 
@@ -129,7 +128,10 @@ def summary_html(a):
     points = item.get("points", [])
     if not points:
         return ""
-    return '<section class="article-summary"><h2>文章总览</h2><p class="summary-credit">档案馆根据原文整理</p><ul>'+''.join(f'<li>{e(point["text"])} <a href="#section-{point["section"]}" class="summary-source">查看原文段落</a></li>' for point in points)+'</ul></section>'
+    def source_label(point):
+        heading = a['sections'][point['section']].get('heading', '').strip()
+        return '查看原文：'+(heading or a['title'])
+    return '<section class="article-summary"><h2>文章总览</h2><p class="summary-credit">档案馆根据原文整理</p><ul>'+''.join(f'<li>{e(point["text"])} <a href="#section-{point["section"]}" class="summary-source">{e(source_label(point))}</a></li>' for point in points)+'</ul></section>'
 
 def metadata(a):
     category = next(c for c in categories if c["slug"] == a["category"])
@@ -211,7 +213,7 @@ def directory_body(number):
     next_attrs = f'href="{link(f"articles/page/{number+1}/")}"' if number < pages else 'aria-disabled="true"'
     return f'''<h1 class="page-title">文章目录</h1>
 <div class="catalog-toolbar"><p class="result-count" id="result-count" role="status">共 {len(catalog)} 篇文章</p></div>
-{category_jumps()}<details class="filter-picker"><summary>专题、合集与作者</summary><div class="filter-options"><label>专题<select data-select="topic"><option value="">全部专题</option>{''.join(f'<option value="{f["slug"]}">{e(f["title"])}</option>' for f in features)}</select></label><label>合集<select data-select="tag"><option value="">全部合集</option>{''.join(f'<option value="{t["slug"]}">{e(t["title"])}</option>' for t in tags)}</select></label><label>作者<select data-select="author"><option value="">全部作者</option>{''.join(f'<option value="{e(a,quote=True)}">{e(a)}</option>' for a in sorted({a["author"] for a in catalog if a["author"]}))}</select></label></div></details>
+{category_jumps()}<details class="filter-picker"><summary>专题、合集与作者</summary><div class="filter-options"><label>专题<select data-select="topic"><option value="">全部专题</option>{''.join(f'<option value="{f["slug"]}" data-url="{filter_target("topic",f["slug"])}">{e(f["title"])}</option>' for f in features)}</select></label><label>合集<select data-select="tag"><option value="">全部合集</option>{''.join(f'<option value="{t["slug"]}">{e(t["title"])}</option>' for t in tags)}</select></label><label>作者<select data-select="author"><option value="">全部作者</option>{''.join(f'<option value="{e(a,quote=True)}">{e(a)}</option>' for a in sorted({a["author"] for a in catalog if a["author"]}))}</select></label></div></details>
 <div class="active-filters" id="active-filters" aria-label="当前筛选"></div><button id="clear-search" hidden>清空筛选</button>
 <div id="results"><ul class="catalog-list">{''.join(title_row(a, searchable=True).replace('class="catalog-entry"', 'class="catalog-entry"'+(' hidden' if not (number-1)*20 <= i < number*20 else '')) for i,a in enumerate(catalog))}</ul></div>
 <div id="empty" class="empty" hidden><p>没有匹配的文章，请调整筛选条件。</p></div><nav class="pagination" aria-label="结果分页"><a id="prev-page" {prev_attrs}>上一页</a><span id="page-count" role="status">{number} / {pages}</span><a id="next-page" {next_attrs}>下一页</a><form id="page-jump" class="page-jump" action="{link("articles/")}" method="get"><label for="page-number">跳至</label><input id="page-number" name="page" type="number" min="1" max="{pages}" value="{number}" required inputmode="numeric" aria-label="页码"><span>页</span><button type="submit">跳转</button></form></nav>'''
@@ -343,9 +345,8 @@ for a in articles:
     url=ORIGIN+link('articles/'+a['slug']+'/')
     description=' '.join(a.get('excerpt',[])) or a['title']
     schema={'@context':'https://schema.org','@type':'BlogPosting','headline':a['title'],'url':url,'mainEntityOfPage':url,'description':description,'inLanguage':'zh-CN','author':{'@type':'Person','name':a['author']}}
-    known_authors=json.loads((ROOT/'content/authors.json').read_text(encoding='utf-8'))
-    if any(profile['name']==a['author'] for profile in known_authors):
-        schema['author']['url']=ORIGIN+link('authors/')+'#'+author_id(a['author'])
+    if a.get('author'):
+        schema['author']['url']=ORIGIN+filter_target('author',a['author'])
     # Imported dates do not reliably distinguish original publication from edits.
     # Omit them until individually verified instead of inventing timestamps.
     page("articles/"+a["slug"]+"/", presentation.get(a["slug"], {}).get("seo_title", a["title"]), layout(article_body, reading_side), "文章目录",description=description,schema=schema)
@@ -406,10 +407,24 @@ for profile in author_profiles:
     examples = ''.join(f'<li><a href="{link("articles/"+a["slug"]+"/")}">{e(a["title"])}</a></li>' for a in selected[:2])
     author_blocks.append(f'<section class="author-profile" id="{author_id(profile["name"])}"><h2>{e(profile["name"])}</h2><p>{e(profile["introduction"])}</p><ul>{examples}</ul><p class="author-more">{filter_link("author",profile["name"],f"查看全部文章（{len(selected)}） →")}</p></section>')
 page("authors/", "作者介绍", layout('<h1 class="page-title">作者介绍</h1><div class="author-profiles">'+''.join(author_blocks)+'</div>'), "作者介绍")
+author_names = sorted({item['author'] for item in catalog if item.get('author')})
+for name in author_names:
+    selected = [item for item in catalog if item.get('author') == name]
+    profile = next((p for p in author_profiles if p['name'] == name), None)
+    intro = '<p>'+e(profile['introduction'])+'</p>' if profile else ''
+    body = '<h1 class="page-title">'+e(name)+'的文章</h1>'+intro+'<ul class="catalog-list">'+''.join(title_row(item) for item in selected)+'</ul>'
+    page('authors/'+quote(name, safe='')+'/', name+'的文章', layout(body), '作者介绍', description=name+'在张健柏档案馆收录的文章，共'+str(len(selected))+'篇。')
+for feature in features:
+    selected = [item for item in catalog if item['topic'] == feature['slug']]
+    category = next(c for c in categories if c['slug'] == feature['category'])
+    body = '<h1 class="page-title">'+e(feature['title'])+'</h1><p>'+filter_link('category', category['slug'], category['title'])+'</p><ul class="catalog-list">'+''.join(title_row(item) for item in selected)+'</ul>'
+    page('features/'+feature['slug']+'/', feature['title'], layout(body), '分类', description=feature['title']+'：收录'+str(len(selected))+'篇相关记录与评论，属于'+category['title']+'议题。')
 page("404.html", "页面未找到", layout(f'<h1 class="page-title">页面未找到</h1><p><a href="{link()}">返回首页</a></p>'), noindex=True)
 (OUT / ".nojekyll").touch()
 urls = ["", "articles/", "topics/", "about/", "who-is-zhang-jianbai/", "authors/"] + ["topics/"+c["slug"]+"/" for c in categories] + ["articles/"+a["slug"]+"/" for a in articles]
 urls += ["tags/"+t["slug"]+"/" for t in tags]
+urls += ['authors/'+quote(name, safe='')+'/' for name in author_names]
+urls += ['features/'+f['slug']+'/' for f in features]
 urls += [f'articles/page/{n}/' for n in range(2,(len(catalog)+19)//20+1)]
 (OUT/"sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+''.join(f'<url><loc>{ORIGIN}{link(p)}</loc></url>' for p in urls)+"</urlset>", encoding="utf-8")
 
@@ -418,7 +433,7 @@ class Links(HTMLParser):
         for k, v in attrs:
             if k in ("href", "src", "action") and v and v.startswith(BASE+"/"):
                 path = urlsplit(v).path
-                target = OUT / path.removeprefix(BASE+"/")
+                target = OUT / unquote(path.removeprefix(BASE+"/"))
                 if path.endswith("/"):
                     target = target / "index.html"
                 assert target.exists(), f"Broken internal link: {v}"
