@@ -57,6 +57,9 @@ def filter_link(key, value, label, css=""):
     return f'<a class="{css}" data-filter="{key}" data-value="{e(value, quote=True)}" href="{e(target, quote=True)}">{e(label)}</a>'
 
 def page(path, title, body, active="", noindex=False, description=None, schema=None):
+    brand = f'<a class="brand" href="{link()}">{NAME}</a>'
+    if not path:
+        brand = '<h1 class="site-name">'+brand+'</h1>'
     nav = "".join(
         f'<a href="{link(p)}"' + (' aria-current="page"' if active == label else "") + f">{label}</a>"
         for label, p in [("首页", ""), ("张健柏是谁？", "who-is-zhang-jianbai/"), ("文章目录", "articles/"), ("分类", "topics/"), ("作者介绍", "authors/"), ("关于", "about/")]
@@ -73,7 +76,7 @@ def page(path, title, body, active="", noindex=False, description=None, schema=N
 {robots}<link rel="icon" type="image/svg+xml" href="{link('assets/favicon.svg')}">
 <link rel="stylesheet" href="{link('assets/style.css')}?v={VERSION}"><script src="{link('assets/search.js')}?v={VERSION}" defer></script></head>
 <body id="top"><a class="skip" href="#main">跳至正文</a><div class="shell">
-<header class="site-header"><div class="site-identity"><a class="brand" href="{link()}">{NAME}</a>
+<header class="site-header"><div class="site-identity">{brand}
 <form id="search-form" class="header-search" action="{link('articles/')}" method="get" role="search" aria-label="站内搜索">
 <label class="sr-only" for="search">搜索文章</label><input id="search" name="q" type="search" placeholder="搜索文章" autocomplete="off"><button type="submit">搜索</button></form>
 </div><nav aria-label="主导航">{nav}</nav></header>
@@ -345,6 +348,8 @@ for a in articles:
     url=ORIGIN+link('articles/'+a['slug']+'/')
     description=' '.join(a.get('excerpt',[])) or a['title']
     schema={'@context':'https://schema.org','@type':'BlogPosting','headline':a['title'],'url':url,'mainEntityOfPage':url,'description':description,'inLanguage':'zh-CN','author':{'@type':'Person','name':a['author']}}
+    if not a.get('author'):
+        schema.pop('author')
     if a.get('author'):
         schema['author']['url']=ORIGIN+filter_target('author',a['author'])
     # Imported dates do not reliably distinguish original publication from edits.
@@ -400,13 +405,16 @@ def introduction(source="README.md"):
 page("who-is-zhang-jianbai/", "张健柏是谁？", layout('<article class="prose introduction">'+introduction("content/who-is-zhang-jianbai.md")+'</article>'), "张健柏是谁？")
 page("about/", "关于", layout('<article class="prose introduction">'+introduction("content/blog-introduction.md")+'</article>'), "关于")
 author_profiles = json.loads((ROOT / "content/authors.json").read_text(encoding="utf-8"))
+assert {p['name'] for p in author_profiles} == {a['author'] for a in catalog if a.get('author')}, 'Every credited author needs an introduction'
+assert len(author_profiles) == len({p['name'] for p in author_profiles}), 'Duplicate author profile'
 author_blocks = []
 for profile in author_profiles:
     selected = [a for a in articles if a.get("author") == profile["name"]]
     assert selected, "Author profile must have matching articles"
     examples = ''.join(f'<li><a href="{link("articles/"+a["slug"]+"/")}">{e(a["title"])}</a></li>' for a in selected[:2])
     author_blocks.append(f'<section class="author-profile" id="{author_id(profile["name"])}"><h2>{e(profile["name"])}</h2><p>{e(profile["introduction"])}</p><ul>{examples}</ul><p class="author-more">{filter_link("author",profile["name"],f"查看全部文章（{len(selected)}） →")}</p></section>')
-page("authors/", "作者介绍", layout('<h1 class="page-title">作者介绍</h1><div class="author-profiles">'+''.join(author_blocks)+'</div>'), "作者介绍")
+author_index = '<nav aria-label="作者索引" class="author-index">'+''.join('<a href="#'+author_id(p['name'])+'">'+e(p['name'])+'</a>' for p in author_profiles)+'</nav>'
+page("authors/", "作者介绍", layout('<h1 class="page-title">作者介绍</h1><p>收录作者与署名共 '+str(len(author_profiles))+' 项。介绍依据本站收录文章整理；匿名、佚名和集体署名单独标明。</p>'+author_index+'<div class="author-profiles">'+''.join(author_blocks)+'</div>'), "作者介绍", description='张健柏档案馆全部作者与署名介绍：了解各作者的写作内容，并查看其收录文章。')
 author_names = sorted({item['author'] for item in catalog if item.get('author')})
 for name in author_names:
     selected = [item for item in catalog if item.get('author') == name]

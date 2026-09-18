@@ -48,6 +48,12 @@ def normalized(text):
 class RenderedSite(unittest.TestCase):
     def test_static_author_and_topic_pages(self):
         catalog = json.loads((ROOT/'content/catalog.json').read_text(encoding='utf-8'))
+        profiles = json.loads((ROOT/'content/authors.json').read_text(encoding='utf-8'))
+        self.assertEqual({p['name'] for p in profiles}, {x['author'] for x in catalog if x['author']})
+        index = (ROOT/'docs/authors/index.html').read_text(encoding='utf-8')
+        for profile in profiles:
+            self.assertIn('<h2>'+escape(profile['name'])+'</h2>', index)
+            self.assertIn(escape(profile['introduction']), index)
         features = json.loads((ROOT/'content/features.json').read_text(encoding='utf-8'))
         sitemap = (ROOT/'docs/sitemap.xml').read_text(encoding='utf-8')
         groups = [('authors', name, [x for x in catalog if x['author'] == name]) for name in sorted({x['author'] for x in catalog if x['author']})]
