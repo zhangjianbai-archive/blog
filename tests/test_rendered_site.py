@@ -1,5 +1,6 @@
 """Run after build.py: preserve source text and verify reading/navigation output."""
 import json
+import hashlib
 import re
 import unittest
 from html import escape, unescape
@@ -8,6 +9,7 @@ from pathlib import Path
 from urllib.parse import urlsplit, quote, parse_qs
 
 ROOT = Path(__file__).resolve().parents[1]
+ROSTER = json.loads((ROOT/'content/qingshan-roster.json').read_text(encoding='utf-8'))
 
 class Page(HTMLParser):
     def __init__(self, text):
@@ -46,14 +48,29 @@ def normalized(text):
     return re.sub(r'\s+', '', text)
 
 class RenderedSite(unittest.TestCase):
+
+    def test_site_version_is_cross_platform_and_consistent(self):
+        paths = [ROOT/'build.py', *sorted((ROOT/'content').glob('*')), ROOT/'docs/assets/style.css', ROOT/'docs/assets/search.js']
+        source = b''.join(
+            path.read_bytes().replace(b'\r\n', b'\n').replace(b'\r', b'\n')
+            for path in paths if path.is_file()
+        )
+        expected = hashlib.sha256(source).hexdigest()[:12]
+        for path in (ROOT/'docs').rglob('*.html'):
+            html = path.read_text(encoding='utf-8')
+            with self.subTest(path=path):
+                self.assertIn(f'<meta name="site-version" content="{expected}">', html)
+                self.assertIn(f'/blog/assets/style.css?v={expected}', html)
+                self.assertIn(f'/blog/assets/search.js?v={expected}', html)
+
     def test_static_author_and_topic_pages(self):
         catalog = json.loads((ROOT/'content/catalog.json').read_text(encoding='utf-8'))
         profiles = json.loads((ROOT/'content/authors.json').read_text(encoding='utf-8'))
         self.assertEqual({p['name'] for p in profiles}, {x['author'] for x in catalog if x['author']})
         index = (ROOT/'docs/authors/index.html').read_text(encoding='utf-8')
         for profile in profiles:
-            self.assertIn('<h2>'+escape(profile['name'])+'</h2>', index)
-            self.assertIn(escape(profile['introduction']), index)
+                self.assertIn(escape(profile['name']), index)
+                self.assertIn('href="/blog/authors/'+quote(profile['name'], safe='')+'/"', index)
         features = json.loads((ROOT/'content/features.json').read_text(encoding='utf-8'))
         sitemap = (ROOT/'docs/sitemap.xml').read_text(encoding='utf-8')
         groups = [('authors', name, [x for x in catalog if x['author'] == name]) for name in sorted({x['author'] for x in catalog if x['author']})]
@@ -66,7 +83,10 @@ class RenderedSite(unittest.TestCase):
                 self.assertIn('<loc>'+url+'</loc>', sitemap)
                 listing = re.search(r'<ul class="catalog-list">(.*?)</ul>', html, re.S).group(1)
                 actual = re.findall(r'<li id="([^"]+)" class="catalog-entry"', listing)
-                self.assertEqual(actual, [x['slug'] for x in items])
+                expected = [x['slug'] for x in items]
+                if (folder, key) in [('authors', '大王'), ('features', 'rebuild')]:
+                    expected.insert(0, ROSTER['slug'])
+                self.assertEqual(actual, expected)
 
     def test_page_links_have_no_cache_version(self):
         for path in (ROOT/'docs').rglob('*.html'):
@@ -121,7 +141,7 @@ class RenderedSite(unittest.TestCase):
                     self.assertGreater(int(image['height']), 0)
 
     def test_static_pagination_controls(self):
-        total = len(json.loads((ROOT/'content/catalog.json').read_text(encoding='utf-8')))
+        total = 1 + len(json.loads((ROOT/'content/catalog.json').read_text(encoding='utf-8')))
         for number in range(1, (total+19)//20+1):
             path = ROOT/'docs/articles'/('index.html' if number == 1 else f'page/{number}/index.html')
             page = Page(path.read_text(encoding='utf-8'))

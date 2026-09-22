@@ -15,13 +15,25 @@ ORIGIN = "https://zhangjianbai-archive.github.io"
 NAME = "张健柏档案馆"
 GOOGLE_SITE_VERIFICATION = "LacAPiWNG9OXyYZK8H3Flo3atqUjvXdGNjPjn8uwhak"
 INDEXNOW_KEY = "a7f92a255dd52a874d5dcd8a98f9103f"
-VERSION = hashlib.sha256(b"".join(p.read_bytes() for p in [ROOT / "build.py", *sorted((ROOT / "content").glob("*")), ROOT / "docs/assets/style.css", ROOT / "docs/assets/search.js"] if p.is_file())).hexdigest()[:12]
+
+def source_digest(paths):
+    """Hash text sources consistently on Windows and Unix checkouts."""
+    content = (path.read_bytes().replace(b"\r\n", b"\n").replace(b"\r", b"\n") for path in paths if path.is_file())
+    return hashlib.sha256(b"".join(content)).hexdigest()[:12]
+
+VERSION_INPUTS = [ROOT / "build.py", *sorted((ROOT / "content").glob("*")), ROOT / "docs/assets/style.css", ROOT / "docs/assets/search.js"]
+VERSION = source_digest(VERSION_INPUTS)
 articles = json.loads((ROOT / "content/articles.json").read_text(encoding="utf-8"))
 catalog = json.loads((ROOT / "content/catalog.json").read_text(encoding="utf-8"))
 categories = json.loads((ROOT / "content/categories.json").read_text(encoding="utf-8"))
 tags = json.loads((ROOT / "content/tags.json").read_text(encoding="utf-8"))
 presentation = json.loads((ROOT / "content/presentation.json").read_text(encoding="utf-8"))
 features = json.loads((ROOT / "content/features.json").read_text(encoding="utf-8"))
+roster = json.loads((ROOT / 'content/qingshan-roster.json').read_text(encoding='utf-8'))
+articles.insert(0, roster)
+catalog.insert(0, {k: roster[k] for k in ('slug', 'title', 'author', 'category', 'tags') } | {'topic': 'rebuild', 'kind': '文章', 'article': roster['slug'], 'source': {'url': roster['source']}})
+roster_links = {p['name']: p['zhihu'] for p in roster['people'] if p.get('zhihu')}
+roster_links.update({'FAFa': roster_links['FAFN'], '琪锴': roster_links['牛琪锴']})
 for entries in (categories, tags, articles, catalog, features):
     slugs = [entry["slug"] for entry in entries]
     assert len(slugs) == len(set(slugs)), "Duplicate slug"
@@ -161,9 +173,9 @@ def row(a, preview=False):
     search = e(" ".join(text), quote=True)
     url = link("articles/"+a["slug"]+"/")
     previews = json.loads((ROOT / "content/home-previews.json").read_text(encoding="utf-8"))
-    excerpt = f'<p>{e(previews[a["slug"]])}</p>' if preview else ""
+    excerpt = f'<p>{e(previews.get(a["slug"], a.get("summary", "")))}</p>' if preview else ""
     return f'''<article class="post" data-search="{search}">
-<h2 class="post-title"><a href="{url}">{e(a["title"])}</a></h2>
+{('<p class="summary-credit">置顶 · 作者与知乎入口</p>') if a.get('pinned') else ''}<h2 class="post-title"><a href="{url}">{e(a["title"])}</a></h2>
 {metadata(a)}{('<div class="excerpt">'+excerpt+'</div>') if preview else ""}
 <div class="post-footer">{('<a class="read-more" href="'+url+'">阅读全文 »</a>') if preview else ""}{article_tags(a)}</div></article>'''
 
@@ -322,6 +334,10 @@ reading_subheadings = {
 for a in articles:
     subheadings = reading_subheadings.get(a['slug'], {})
     def reading_paragraph(p, i, j):
+        if a.get('pinned') and isinstance(p, str):
+            pattern = '|'.join(re.escape(name) for name in sorted(roster_links, key=len, reverse=True))
+            value = ''.join('<a href="'+e(roster_links[part], quote=True)+'">'+e(part)+'</a>' if part in roster_links else e(part) for part in re.split('('+pattern+')', p))
+            return '<p>'+value+'</p>'
         level = subheadings.get(p) if isinstance(p, str) else None
         return f'<h{level} id="section-{i}-heading-{j}">{e(p)}</h{level}>' if level else paragraph_html(p)
     def comments_html(comments, section_index):
@@ -344,6 +360,8 @@ for a in articles:
     )
     toc = "".join((f'<a class="toc-level-{min(4,max(2,s.get("level",2)))}" href="#section-{i}">{e(s["heading"])}</a>' if s['heading'] else '')+''.join(f'<a class="toc-level-{subheadings[p]}" href="#section-{i}-heading-{j}">{e(p)}</a>' for j,p in enumerate(s['paragraphs']) if isinstance(p,str) and p in subheadings)+(f'<a class="toc-level-3" href="#section-{i}-comments">评论区</a>' if s.get('comments') else '') for i,s in enumerate(a['sections'])) or '<a href="#section-0">正文</a>'
     summary = summary_html(a)
+    if a.get('pinned'):
+        summary = '<p class="summary-credit">作者：大王 · 原文更新于2026年9月22日。名单、拟任职务及评价均出自原文。<a href="'+e(a['source'], quote=True)+'">阅读知乎原文及留言</a>。已修复原文两处链接乱码、合并重复姓名；无明确主页的人物保留姓名。</p>' + summary
     reading_side = '<aside id="reading-navigation" class="sidebar article-sidebar" aria-label="本文侧栏"><section class="toc"><h2>目录</h2>'+toc+'</section></aside>'
     back = f'<a class="back-results" href="{link("articles/")}">返回文章目录</a>'
     article_body = f'<article><header class="article-heading">{back}<h1 class="post-title article-title">{e(a["title"])}</h1>{metadata(a)}</header>'+summary+f'<div class="prose">{sections}</div>{article_tags(a)}<div class="reading-footer">{back}</div></article><div class="reading-controls" aria-label="阅读工具"><button type="button" id="toggle-toc" aria-controls="reading-navigation" aria-expanded="false">目录</button><a href="#top" id="back-top">回到顶部 ↑</a></div>'
