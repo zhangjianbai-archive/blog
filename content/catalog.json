@@ -1,5 +1,65 @@
 [
   {
+    "slug": "huang-chuanke-qianli-survey",
+    "title": "钱莉拙劣的调查报告，与其说是幸福度调查，不如说是邪教传单",
+    "author": "黄传科",
+    "category": "authority",
+    "topic": "system",
+    "tags": [
+      "huang-chuanke"
+    ],
+    "kind": "文章",
+    "source": {
+      "document": "submissions/2026-09-23/钱莉拙劣的调查报告，与其说是幸福度调查，不如说是邪教传单.docx"
+    },
+    "article": "huang-chuanke-qianli-survey"
+  },
+  {
+    "slug": "huang-chuanke-world-first-claim",
+    "title": "“世界第一教育\"的神话，是怎么被一篇公关文编出来的",
+    "author": "黄传科",
+    "category": "teaching",
+    "topic": "outcomes",
+    "tags": [
+      "huang-chuanke"
+    ],
+    "kind": "文章",
+    "source": {
+      "document": "submissions/2026-09-23/“世界第一教育的神话，是怎么被一篇公关文编出来的.docx"
+    },
+    "article": "huang-chuanke-world-first-claim"
+  },
+  {
+    "slug": "huang-chuanke-daowang-zhuxin",
+    "title": "悼亡诛心：一场网暴逼死的人伦惨剧，一桩三观崩塌的人间悲剧",
+    "author": "黄传科",
+    "category": "authority",
+    "topic": "speech",
+    "tags": [
+      "huang-chuanke"
+    ],
+    "kind": "文章",
+    "source": {
+      "document": "submissions/2026-09-23/悼亡诛心：一场网暴逼死的人伦惨剧，一桩三观崩塌的人间悲剧.docx"
+    },
+    "article": "huang-chuanke-daowang-zhuxin"
+  },
+  {
+    "slug": "huang-chuanke-on-wang-xinchang",
+    "title": "评王新昌文章",
+    "author": "黄传科",
+    "category": "authority",
+    "topic": "system",
+    "tags": [
+      "huang-chuanke"
+    ],
+    "kind": "文章",
+    "source": {
+      "document": "submissions/2026-09-23/评王新昌文章.docx"
+    },
+    "article": "huang-chuanke-on-wang-xinchang"
+  },
+  {
     "slug": "collection-01-0004",
     "title": "学术泡沫之一：今日学堂毕业生的大学 Offer 含金量究竟几何？| QS 排名的误导性与隐藏雷区",
     "author": "嘲笑鸟飞起时",

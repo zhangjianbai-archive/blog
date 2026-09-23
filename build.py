@@ -32,6 +32,10 @@ features = json.loads((ROOT / "content/features.json").read_text(encoding="utf-8
 roster = json.loads((ROOT / 'content/qingshan-roster.json').read_text(encoding='utf-8'))
 articles.insert(0, roster)
 catalog.insert(0, {k: roster[k] for k in ('slug', 'title', 'author', 'category', 'tags') } | {'topic': 'rebuild', 'kind': '文章', 'article': roster['slug'], 'source': {'url': roster['source']}})
+# Keep the two established homepage articles, followed only by newly submitted posts.
+HOME_FEATURED_SLUGS = ('qingshan-university-roster', 'congying-information-cocoon')
+home_articles = [next(a for a in articles if a['slug'] == slug) for slug in HOME_FEATURED_SLUGS]
+home_articles += [a for a in articles if a.get('showOnHome') and a['slug'] not in HOME_FEATURED_SLUGS]
 roster_links = {p['name']: p['zhihu'] for p in roster['people'] if p.get('zhihu')}
 roster_links.update({'FAFa': roster_links['FAFN'], '琪锴': roster_links['牛琪锴']})
 for entries in (categories, tags, articles, catalog, features):
@@ -118,7 +122,7 @@ def taxonomy(entries, kind):
 
 def sidebar():
     groups = []
-    home_slugs = {a["slug"] for a in articles[:5]}
+    home_slugs = {a["slug"] for a in home_articles}
     for c in categories:
         selected = []
         for a in articles:
@@ -182,7 +186,7 @@ def row(a, preview=False):
 def empty():
     return '<p class="empty">暂无文章</p>'
 
-page("", "首页", layout((''.join(row(a, preview=True) for a in articles[:5])+f'<a class="more-posts" href="{link("articles/")}">全部文章 →</a>') if articles else empty()), "首页")
+page("", "首页", layout((''.join(row(a, preview=True) for a in home_articles)+f'<a class="more-posts" href="{link("articles/")}">全部文章 →</a>') if home_articles else empty()), "首页")
 
 def title_row(item, searchable=False):
     search = [item["title"], item["author"], item["kind"]]
