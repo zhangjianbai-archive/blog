@@ -33,9 +33,12 @@ roster = json.loads((ROOT / 'content/qingshan-roster.json').read_text(encoding='
 articles.insert(0, roster)
 catalog.insert(0, {k: roster[k] for k in ('slug', 'title', 'author', 'category', 'tags') } | {'topic': 'rebuild', 'kind': '文章', 'article': roster['slug'], 'source': {'url': roster['source']}})
 # Keep the two established homepage articles, followed only by newly submitted posts.
-HOME_FEATURED_SLUGS = ('qingshan-university-roster', 'congying-information-cocoon')
+HOME_FEATURED_SLUGS = (
+    'qingshan-university-roster', 'congying-information-cocoon',
+    'zhang-chengfeng-online-underworld', 'zhang-chengfeng-sexual-repression',
+    'huang-chuanke-qianli-survey', 'huang-chuanke-world-first-claim',
+)
 home_articles = [next(a for a in articles if a['slug'] == slug) for slug in HOME_FEATURED_SLUGS]
-home_articles += [a for a in articles if a.get('showOnHome') and a['slug'] not in HOME_FEATURED_SLUGS]
 roster_links = {p['name']: p['zhihu'] for p in roster['people'] if p.get('zhihu')}
 roster_links.update({'FAFa': roster_links['FAFN'], '琪锴': roster_links['牛琪锴']})
 for entries in (categories, tags, articles, catalog, features):

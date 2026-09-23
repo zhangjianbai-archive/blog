@@ -49,6 +49,25 @@ def normalized(text):
 
 class RenderedSite(unittest.TestCase):
 
+    def test_homepage_selection_and_verbatim_previews(self):
+        expected = (
+            'qingshan-university-roster', 'congying-information-cocoon',
+            'zhang-chengfeng-online-underworld', 'zhang-chengfeng-sexual-repression',
+            'huang-chuanke-qianli-survey', 'huang-chuanke-world-first-claim',
+        )
+        html = (ROOT/'docs/index.html').read_text(encoding='utf-8')
+        self.assertEqual(tuple(re.findall(r'<h2 class="post-title"><a href="/blog/articles/([^/]+)/">', html)), expected)
+        previews = json.loads((ROOT/'content/home-previews.json').read_text(encoding='utf-8'))
+        articles = json.loads((ROOT/'content/articles.json').read_text(encoding='utf-8'))
+        articles.append(ROSTER)
+        for slug in expected:
+            with self.subTest(slug=slug):
+                source = next(a for a in articles if a['slug'] == slug)
+                body = ''.join((p if isinstance(p, str) else p.get('markdown', '')).replace('**', '')
+                               for section in source['sections'] for p in section['paragraphs'])
+                self.assertIn(previews[slug], body)
+                self.assertIn(escape(previews[slug]), html)
+
     def test_site_version_is_cross_platform_and_consistent(self):
         paths = [ROOT/'build.py', *sorted((ROOT/'content').glob('*')), ROOT/'docs/assets/style.css', ROOT/'docs/assets/search.js']
         source = b''.join(
