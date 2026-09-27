@@ -49,6 +49,24 @@ def normalized(text):
 
 class RenderedSite(unittest.TestCase):
 
+    def test_editorial_boundaries_comments_and_author_alias(self):
+        prior = (ROOT/'docs/articles/collection-01-1557/index.html').read_text(encoding='utf-8')
+        self.assertNotIn('**破茧成蝶**', prior)
+        self.assertNotIn('<p>破茧成蝶</p>', prior)
+        short = (ROOT/'docs/articles/collection-11-0933/index.html').read_text(encoding='utf-8')
+        self.assertIn('<h1 class="post-title article-title">精英梦</h1>', short)
+        self.assertNotIn('被兜售的焦虑', short)
+        self.assertIn('<a href="#section-0">正文</a>', short)
+        commented = (ROOT/'docs/articles/collection-05-0002/index.html').read_text(encoding='utf-8')
+        self.assertIn('<details open class="source-comments"', commented)
+        self.assertIn('<summary>知乎评论</summary>', commented)
+        legacy = (ROOT/'docs/authors/嘲笑鸟飞起时/index.html').read_text(encoding='utf-8')
+        self.assertIn('http-equiv="refresh"', legacy)
+        self.assertIn('/blog/authors/%E5%98%B2%E7%AC%91%E9%B8%9F/', legacy)
+        attendance = (ROOT/'docs/articles/collection-03-0401/index.html').read_text(encoding='utf-8')
+        self.assertIn('<div class="table-scroll"><table>', attendance)
+        self.assertIn('2021年12月静慧出勤表', attendance)
+
     def test_homepage_selection_and_verbatim_previews(self):
         expected = (
             'qingshan-university-roster', 'congying-information-cocoon',
@@ -117,11 +135,12 @@ class RenderedSite(unittest.TestCase):
 
     def test_search_titles_and_static_overviews(self):
         presentation = json.loads((ROOT/'content/presentation.json').read_text(encoding='utf-8'))
+        seo_titles = json.loads((ROOT/'content/seo_titles.json').read_text(encoding='utf-8'))
         for article in json.loads((ROOT/'content/articles.json').read_text(encoding='utf-8')):
             with self.subTest(slug=article['slug']):
                 item = presentation[article['slug']]
                 html = (ROOT/'docs/articles'/article['slug']/'index.html').read_text(encoding='utf-8')
-                self.assertIn('<title>'+escape(item['seo_title'])+' · 张健柏档案馆</title>', html)
+                self.assertIn('<title>'+escape(seo_titles.get(article['slug'], article['title']))+' · 张健柏档案馆</title>', html)
                 heading = re.search(r'<h1\b[^>]*>(.*?)</h1>', html).group(1)
                 self.assertEqual(unescape(heading), article['title'])
                 schema = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', html, re.S).group(1))
@@ -142,6 +161,8 @@ class RenderedSite(unittest.TestCase):
                     if isinstance(p, str): expected.append(p)
                     elif 'markdown' in p: expected.append(p['markdown'].replace('**', ''))
                     elif 'table' in p: expected.extend(cell for row in p['table'] for cell in row)
+                if section.get('comments'):
+                    expected.append('知乎评论')
                 for comment in section.get('comments', []):
                     for p in comment.get('paragraphs', []):
                         if isinstance(p, str): expected.append(p)

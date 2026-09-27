@@ -57,8 +57,23 @@ def main(source_dir, document_name, output):
             start = min(title_ids)
             end = entries[position + 1]["source"]["titleParagraphs"][0] if position + 1 < len(entries) else len(paragraphs)
             blocks = []
-            for index in range(start, end):
-                paragraph = paragraphs[index]
+            index = -1
+            for paragraph in body:
+                if paragraph.tag == f"{{{NS['w']}}}p":
+                    index += 1
+                elif paragraph.tag == f"{{{NS['w']}}}tbl":
+                    if start <= index < end:
+                        blocks.append({
+                            "paragraph": index, "kind": "table", "style": "",
+                            "text": "", "runs": [], "images": [],
+                            "table": [[visible_text(cell) for cell in row.findall('w:tc', NS)]
+                                      for row in paragraph.findall('w:tr', NS)],
+                        })
+                    continue
+                else:
+                    continue
+                if not start <= index < end:
+                    continue
                 if index in title_ids:
                     continue
                 value = visible_text(paragraph)

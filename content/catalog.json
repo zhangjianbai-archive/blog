@@ -92,7 +92,7 @@
   {
     "slug": "collection-01-0004",
     "title": "学术泡沫之一：今日学堂毕业生的大学 Offer 含金量究竟几何？| QS 排名的误导性与隐藏雷区",
-    "author": "嘲笑鸟飞起时",
+    "author": "嘲笑鸟",
     "authorSource": "collection",
     "category": "teaching",
     "topic": "admissions",
@@ -114,7 +114,7 @@
   {
     "slug": "collection-01-0084",
     "title": "学术泡沫之二：从神话到幻灭｜今日学堂“速成教育”的真相与后果",
-    "author": "嘲笑鸟飞起时",
+    "author": "嘲笑鸟",
     "authorSource": "collection",
     "category": "teaching",
     "topic": "outcomes",
@@ -136,7 +136,7 @@
   {
     "slug": "collection-01-0237",
     "title": "各位冠军班/准冠军班的同学和家长，你们敢点进来看吗 | 盛静美老师的“20条路径”是看似选择的陷阱",
-    "author": "嘲笑鸟飞起时",
+    "author": "嘲笑鸟",
     "authorSource": "collection",
     "category": "teaching",
     "topic": "admissions",
@@ -158,7 +158,7 @@
   {
     "slug": "collection-01-0436",
     "title": "镀金武梦之一：胜利捷报的另一面",
-    "author": "嘲笑鸟飞起时",
+    "author": "嘲笑鸟",
     "authorSource": "collection",
     "category": "teaching",
     "topic": "sports",
@@ -180,7 +180,7 @@
   {
     "slug": "collection-01-0572",
     "title": "镀金武梦之二：今日学堂如何打造“冠军工厂”",
-    "author": "嘲笑鸟飞起时",
+    "author": "嘲笑鸟",
     "authorSource": "collection",
     "category": "teaching",
     "topic": "sports",
@@ -202,7 +202,7 @@
   {
     "slug": "collection-01-0721",
     "title": "暗角危墙之一：不可忽视的资本黑洞",
-    "author": "嘲笑鸟飞起时",
+    "author": "嘲笑鸟",
     "authorSource": "collection",
     "category": "school-life",
     "topic": "fees",
@@ -224,7 +224,7 @@
   {
     "slug": "collection-01-0927",
     "title": "暗角危墙之二：被隐去的风险与伤痕",
-    "author": "嘲笑鸟飞起时",
+    "author": "嘲笑鸟",
     "authorSource": "collection",
     "category": "school-life",
     "topic": "everyday",
@@ -246,7 +246,7 @@
   {
     "slug": "collection-01-1102",
     "title": "失信清单：以史为鉴，一览新教育史上的承诺与交付",
-    "author": "嘲笑鸟飞起时",
+    "author": "嘲笑鸟",
     "authorSource": "collection",
     "category": "teaching",
     "topic": "admissions",
@@ -268,7 +268,7 @@
   {
     "slug": "collection-01-1288",
     "title": "隐形牢笼之一：令人心驰神往的“乌托邦”｜“天使视角”谈今日",
-    "author": "嘲笑鸟飞起时",
+    "author": "嘲笑鸟",
     "authorSource": "collection",
     "category": "authority",
     "topic": "control",
@@ -290,7 +290,7 @@
   {
     "slug": "collection-01-1394",
     "title": "隐形牢笼之二：清一版《笨蛋没活路》｜“魔鬼视角”谈今日 （修改版）",
-    "author": "嘲笑鸟飞起时",
+    "author": "嘲笑鸟",
     "authorSource": "collection",
     "category": "authority",
     "topic": "control",
@@ -312,7 +312,7 @@
   {
     "slug": "collection-01-1557",
     "title": "隐形牢笼之三：这封穿越时空的来信，未来你会后悔没拆开吗｜“局外人视角”谈今日",
-    "author": "嘲笑鸟飞起时",
+    "author": "嘲笑鸟",
     "authorSource": "collection",
     "category": "life-after",
     "topic": "leaving",
@@ -334,7 +334,7 @@
   {
     "slug": "collection-01-1610",
     "title": "破茧成蝶：如何跟过去的自己和解",
-    "author": "嘲笑鸟飞起时",
+    "author": "嘲笑鸟",
     "authorSource": "collection",
     "category": "life-after",
     "topic": "rebuild",
@@ -345,9 +345,11 @@
     "source": {
       "document": "1.嘲笑鸟飞起时：昔日校友回望今日学堂 =合集.docx",
       "titleParagraphs": [
+        1589,
         1610
       ],
       "rawTitle": [
+        "破茧成蝶",
         "破茧成蝶：如何跟过去的自己和解"
       ]
     },

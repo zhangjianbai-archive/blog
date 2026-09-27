@@ -28,6 +28,7 @@ catalog = json.loads((ROOT / "content/catalog.json").read_text(encoding="utf-8")
 categories = json.loads((ROOT / "content/categories.json").read_text(encoding="utf-8"))
 tags = json.loads((ROOT / "content/tags.json").read_text(encoding="utf-8"))
 presentation = json.loads((ROOT / "content/presentation.json").read_text(encoding="utf-8"))
+seo_titles = json.loads((ROOT / "content/seo_titles.json").read_text(encoding="utf-8"))
 features = json.loads((ROOT / "content/features.json").read_text(encoding="utf-8"))
 roster = json.loads((ROOT / 'content/qingshan-roster.json').read_text(encoding='utf-8'))
 articles.insert(0, roster)
@@ -321,7 +322,8 @@ def paragraph_html(p):
         # applied first so imported source text cannot create arbitrary HTML.
         value = e(p['markdown'])
         value = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', value)
-        return f'<p>{source_links(value)}</p>'
+        rendered = f'<p>{source_links(value)}</p>'
+        return '<blockquote>'+rendered+'</blockquote>' if p.get('quotation') else rendered
     if 'table' in p:
         return '<div class="table-scroll"><table>'+''.join('<tr>'+''.join('<td>'+e(cell)+'</td>' for cell in row)+'</tr>' for row in p['table'])+'</table></div>'
     assert re.fullmatch(r'assets/articles/[a-z0-9/-]+\.(png|jpg|webp)', p['image'])
@@ -360,12 +362,14 @@ for a in articles:
             author = f'<header>{e(comment["author"])}</header>' if comment.get('author') else ''
             return f'<li class="comment"><article>{author}{body}</article>{child_list}</li>'
         roots = ''.join(branch(comment) for comment in by_parent.get(None, []))
-        return f'<aside class="source-comments" id="section-{section_index}-comments" aria-label="评论区"><ol>{roots}</ol></aside>'
+        return f'<details open class="source-comments" id="section-{section_index}-comments"><summary>知乎评论</summary><ol>{roots}</ol></details>'
     sections = "".join(
         f'<section id="section-{i}">'+(f'<h{min(4,max(2,s.get("level",2)))}>{e(s["heading"])}</h{min(4,max(2,s.get("level",2)))}>' if s["heading"] else '')+('<blockquote>' if s.get('quotation') else '')+''.join(reading_paragraph(p,i,j) for j,p in enumerate(s["paragraphs"]))+('</blockquote>' if s.get('quotation') else '')+comments_html(s.get('comments', []), i)+"</section>"
         for i, s in enumerate(a["sections"])
     )
-    toc = "".join((f'<a class="toc-level-{min(4,max(2,s.get("level",2)))}" href="#section-{i}">{e(s["heading"])}</a>' if s['heading'] else '')+''.join(f'<a class="toc-level-{subheadings[p]}" href="#section-{i}-heading-{j}">{e(p)}</a>' for j,p in enumerate(s['paragraphs']) if isinstance(p,str) and p in subheadings)+(f'<a class="toc-level-3" href="#section-{i}-comments">评论区</a>' if s.get('comments') else '') for i,s in enumerate(a['sections'])) or '<a href="#section-0">正文</a>'
+    # A large source heading may be emphasis, not a navigation entry.
+    # Explicit editorial decisions override this conservative fallback.
+    toc = "".join((f'<a class="toc-level-{min(4,max(2,s.get("level",2)))}" href="#section-{i}">{e(s.get("toc_title") or s["heading"])}</a>' if s['heading'] and s.get('toc', len(s['heading']) <= 60) else '')+''.join(f'<a class="toc-level-{subheadings[p]}" href="#section-{i}-heading-{j}">{e(p)}</a>' for j,p in enumerate(s['paragraphs']) if isinstance(p,str) and p in subheadings)+(f'<a class="toc-level-3" href="#section-{i}-comments">知乎评论</a>' if s.get('comments') else '') for i,s in enumerate(a['sections'])) or '<a href="#section-0">正文</a>'
     summary = summary_html(a)
     if a.get('pinned'):
         summary = '<p class="summary-credit">作者：大王 · 原文更新于2026年9月22日。名单、拟任职务及评价均出自原文。<a href="'+e(a['source'], quote=True)+'">阅读知乎原文及留言</a>。已修复原文两处链接乱码、合并重复姓名；无明确主页的人物保留姓名。</p>' + summary
@@ -382,7 +386,7 @@ for a in articles:
         schema['author']['url']=ORIGIN+filter_target('author',a['author'])
     # Imported dates do not reliably distinguish original publication from edits.
     # Omit them until individually verified instead of inventing timestamps.
-    page("articles/"+a["slug"]+"/", presentation.get(a["slug"], {}).get("seo_title", a["title"]), layout(article_body, reading_side), "文章目录",description=description,schema=schema)
+    page("articles/"+a["slug"]+"/", seo_titles.get(a["slug"], a["title"]), layout(article_body, reading_side), "文章目录",description=description,schema=schema)
 
 def inline_markdown(text):
     # Render the Markdown constructs used in the original introduction, without editing its source.
@@ -450,6 +454,17 @@ for name in author_names:
     intro = '<p>'+e(profile['introduction'])+'</p>' if profile else ''
     body = '<h1 class="page-title">'+e(name)+'的文章</h1>'+intro+'<ul class="catalog-list">'+''.join(title_row(item) for item in selected)+'</ul>'
     page('authors/'+quote(name, safe='')+'/', name+'的文章', layout(body), '作者介绍', description=name+'在张健柏档案馆收录的文章，共'+str(len(selected))+'篇。')
+# Keep existing links to the former mistaken author label usable. The label is
+# the column title, while the corrected author page is 嘲笑鸟.
+old_author = '嘲笑鸟飞起时'
+new_author = '嘲笑鸟'
+old_author_path = 'authors/'+quote(old_author, safe='')+'/'
+new_author_url = link('authors/'+quote(new_author, safe='')+'/')
+page(old_author_path, '作者页面已迁移', layout('<h1 class="page-title">作者页面已迁移</h1><p>“嘲笑鸟飞起时”是专栏名称，作者为嘲笑鸟。<a href="'+new_author_url+'">查看嘲笑鸟的文章</a>。</p>'), noindex=True)
+redirect_path = OUT / unquote(old_author_path) / 'index.html'
+redirect_html = redirect_path.read_text(encoding='utf-8')
+redirect_html = redirect_html.replace('<meta name="robots" content="noindex,follow">', '<meta name="robots" content="noindex,follow"><meta http-equiv="refresh" content="0; url='+new_author_url+'">')
+redirect_path.write_text(redirect_html, encoding='utf-8')
 for feature in features:
     selected = [item for item in catalog if item['topic'] == feature['slug']]
     category = next(c for c in categories if c['slug'] == feature['category'])

@@ -2,6 +2,7 @@
 import json
 import re
 import sys
+import copy
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -17,6 +18,26 @@ def marked(block):
         f"**{run['text']}**" if run["bold"] else run["text"].replace("**", r"\*\*")
         for run in block["runs"]
     )
+
+
+def add_review_bold(value, phrases):
+    for phrase in phrases:
+        assert phrase and value.count(phrase) == 1, "Review bold phrase must occur exactly once"
+        value = value.replace(phrase, f"**{phrase}**", 1)
+    return value
+
+
+def split_at_reviewed_sentences(block, endings):
+    remaining = block["text"]
+    parts = []
+    for ending in endings:
+        assert ending and remaining.count(ending) == 1, "Review split sentence must occur exactly once"
+        cut = remaining.index(ending) + len(ending)
+        assert cut < len(remaining), "Review split must leave following text"
+        parts.append(remaining[:cut])
+        remaining = remaining[cut:]
+    parts.append(remaining)
+    return parts
 
 
 def split_marked(block, parts):
@@ -47,7 +68,18 @@ def split_marked(block, parts):
 def create(packet_path, config_path, output_path):
     packet = {item["slug"]: item for item in json.loads(Path(packet_path).read_text(encoding="utf-8"))}
     config = json.loads(Path(config_path).read_text(encoding="utf-8"))
-    item = packet[config["slug"]]
+    item = copy.deepcopy(packet[config["slug"]])
+    # Explicitly reviewed joins repair Word paragraph breaks inside a sentence.
+    # Concatenating the original text and runs retains every source character.
+    for group in config.get('merge_paragraphs', []):
+        assert not config.get('comments'), 'Review comment indices again before merging paragraphs'
+        positions = [i for i,b in enumerate(item['blocks']) if b['paragraph'] in group]
+        assert len(positions) == len(group) and positions == list(range(positions[0], positions[-1]+1))
+        chosen = item['blocks'][positions[0]:positions[-1]+1]
+        assert [b['paragraph'] for b in chosen] == group
+        assert all(not b.get('images') and 'table' not in b for b in chosen)
+        merged = dict(chosen[0], text=''.join(b['text'] for b in chosen), runs=[r for b in chosen for r in b['runs']])
+        item['blocks'][positions[0]:positions[-1]+1] = [merged]
     assert config.get("overview_kind") == "editorial", "GEO overview must be marked as editorial"
     assert isinstance(config.get("description"), str) and config["description"].strip(), "GEO overview is required"
     assert 2 <= len(config.get("key_points", [])) <= 6, "GEO overview needs 2-6 key points"
@@ -56,7 +88,14 @@ def create(packet_path, config_path, output_path):
                for point in config["key_points"]), "Invalid GEO overview point"
     headings = {int(key): value for key, value in config["headings"].items()}
     splits = {int(key): value for key, value in config.get("splits", {}).items()}
+    if "split_after" in config:
+        splits = {int(key): split_at_reviewed_sentences(block, endings)
+                  for key, endings in config["split_after"].items()
+                  for block in item["blocks"] if block["paragraph"] == int(key)}
+        assert len(splits) == len(config["split_after"]), "Unknown review split paragraph"
     split_headings = {int(key): value for key, value in config.get("split_headings", {}).items()}
+    if "split_after" in config:
+        split_headings = {}
     section_titles = {int(key): value for key, value in config.get("section_titles", {}).items()}
     assert all(isinstance(item.get("text"), str) and item["text"].strip()
                and item.get("level", 2) in {2, 3, 4}
@@ -74,6 +113,9 @@ def create(packet_path, config_path, output_path):
     lines = ["<!--ARCHIVE-META", json.dumps(meta, ensure_ascii=False, indent=2), "-->", "", f"# {item['title']}", "", "<!-- 原文开始 -->", ""]
     active_comment = None
     for index, block in enumerate(item["blocks"]):
+        if 'table' in block:
+            lines.extend(['<!-- 原文表格 '+json.dumps({'rows': block['table']}, ensure_ascii=False)+' -->', ''])
+            continue
         if block["paragraph"] in section_titles:
             title = section_titles[block["paragraph"]]
             lines.extend([
@@ -90,6 +132,12 @@ def create(packet_path, config_path, output_path):
             active_comment = comment
         parts = splits.get(block["paragraph"], [block["text"]])
         marked_parts = split_marked(block, parts) if block["text"] else []
+        for phrase in config.get("bold_phrases", []):
+            if phrase in block["text"]:
+                locations = [i for i, part in enumerate(marked_parts) if phrase in part]
+                assert len(locations) == 1, "Review bold must fit within one split paragraph"
+                position = locations[0]
+                marked_parts[position] = add_review_bold(marked_parts[position], [phrase])
         assert not (block["paragraph"] in headings and len(marked_parts) > 1), "Heading paragraphs cannot also be split"
         levels = split_headings.get(block["paragraph"], [0] * len(marked_parts))
         assert len(levels) == len(marked_parts), "Split heading levels must match paragraph parts"
@@ -99,7 +147,8 @@ def create(packet_path, config_path, output_path):
             if text and (block["paragraph"] in headings or level):
                 lines.extend(["#" * (headings.get(block["paragraph"]) or level) + " " + text, ""])
             elif text:
-                lines.extend([text, ""])
+                prefix = '> ' if block['paragraph'] in config.get('quotes', []) else ''
+                lines.extend([prefix + text, ""])
         for image in block["images"]:
             lines.extend([f"![{item['title']}：原文配图](/blog/{image})", ""])
     if active_comment is not None:
@@ -107,21 +156,27 @@ def create(packet_path, config_path, output_path):
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text("\n".join(lines), encoding="utf-8")
-    verify(output, item, splits)
+    verify(output, item, splits, config.get("bold_phrases", []))
 
 
-def verify(markdown_path, source_item, splits=None):
+def verify(markdown_path, source_item, splits=None, bold_phrases=None):
     splits = splits or {}
+    bold_phrases = bold_phrases or []
     text = Path(markdown_path).read_text(encoding="utf-8").split("<!-- 原文开始 -->", 1)[1]
     paragraphs = []
     markdown_paragraphs = []
     images = []
+    tables = []
     for part in re.split(r"\n\s*\n", text.strip("\n")):
+        table = re.fullmatch(r'<!-- 原文表格 (\{.*\}) -->', part, re.S)
+        if table:
+            tables.append(json.loads(table.group(1))['rows'])
+            continue
         if part.startswith("<!-- 原文评论"):
             continue
         if part.startswith("<!-- 编辑目录标题 "):
             continue
-        value = re.sub(r"^#{2,4} ", "", part)
+        value = re.sub(r"^(?:#{2,4}|>) ", "", part)
         if value.startswith("!["):
             image = re.fullmatch(r"!\[.*\]\(/blog/(assets/articles/docx/[a-z0-9]+\.(?:png|jpg|webp))\)", value)
             assert image, "Invalid reviewed image"
@@ -135,9 +190,15 @@ def verify(markdown_path, source_item, splits=None):
     expected_markdown = [part for block in source_item["blocks"] if block["text"].strip()
                          for part in (split_marked(block, splits[block["paragraph"]])
                                       if block["paragraph"] in splits else [marked(block)])]
+    for phrase in bold_phrases:
+        locations = [i for i, part in enumerate(expected_markdown) if phrase in part]
+        assert len(locations) == 1, "Review bold phrase must match exactly one source paragraph"
+        index = locations[0]
+        expected_markdown[index] = add_review_bold(expected_markdown[index], [phrase])
     assert markdown_paragraphs == expected_markdown, "Reviewed Markdown changed source bold formatting"
     expected_images = [image for block in source_item["blocks"] for image in block["images"]]
     assert images == expected_images, "Reviewed Markdown changed source image order"
+    assert tables == [block['table'] for block in source_item['blocks'] if 'table' in block], "Reviewed Markdown changed source tables"
 
 
 def apply(markdown_path):
@@ -148,6 +209,10 @@ def apply(markdown_path):
     sections = [{"heading": "", "paragraphs": []}]
     active_comment = None
     for part in re.split(r"\n\s*\n", body.strip("\n")):
+        table = re.fullmatch(r'<!-- 原文表格 (\{.*\}) -->', part, re.S)
+        if table:
+            sections[-1]['paragraphs'].append({'table': json.loads(table.group(1))['rows']})
+            continue
         editorial_heading = re.fullmatch(r"<!-- 编辑目录标题 (\{.*\}) -->", part, re.S)
         if editorial_heading:
             title = json.loads(editorial_heading.group(1))
@@ -171,7 +236,7 @@ def apply(markdown_path):
             target.append({"image": image.group(2), "alt": image.group(1)})
         else:
             target = active_comment["paragraphs"] if active_comment is not None else sections[-1]["paragraphs"]
-            target.append({"markdown": part})
+            target.append({"markdown": part[2:], 'quotation': True} if part.startswith('> ') else {"markdown": part})
     articles_path = ROOT / "content/articles.json"
     articles = json.loads(articles_path.read_text(encoding="utf-8"))
     article = next(item for item in articles if item["slug"] == metadata["slug"])
