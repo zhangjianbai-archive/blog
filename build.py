@@ -84,7 +84,7 @@ def page(path, title, body, active="", noindex=False, description=None, schema=N
         brand = '<h1 class="site-name">'+brand+'</h1>'
     nav = "".join(
         f'<a href="{link(p)}"' + (' aria-current="page"' if active == label else "") + f">{label}</a>"
-        for label, p in [("首页", ""), ("张健柏是谁？", "who-is-zhang-jianbai/"), ("文章目录", "articles/"), ("分类", "topics/"), ("作者介绍", "authors/"), ("关于", "about/")]
+        for label, p in [("首页", ""), ("张健柏是谁？", "who-is-zhang-jianbai/"), ("文章目录", "articles/"), ("内部资料", "internal/"), ("分类", "topics/"), ("作者介绍", "authors/"), ("关于", "about/")]
     )
     robots = '<meta name="robots" content="noindex,follow">' if noindex else ""
     if description is None:
@@ -471,11 +471,14 @@ for feature in features:
     body = '<h1 class="page-title">'+e(feature['title'])+'</h1><p>'+filter_link('category', category['slug'], category['title'])+'</p><ul class="catalog-list">'+''.join(title_row(item) for item in selected)+'</ul>'
     page('features/'+feature['slug']+'/', feature['title'], layout(body), '分类', description=feature['title']+'：收录'+str(len(selected))+'篇相关记录与评论，属于'+category['title']+'议题。')
 page("404.html", "页面未找到", layout(f'<h1 class="page-title">页面未找到</h1><p><a href="{link()}">返回首页</a></p>'), noindex=True)
+from tools.internal_materials import build_internal
+internal_urls = build_internal(ROOT, page, layout, link)
 (OUT / ".nojekyll").touch()
 urls = ["", "articles/", "topics/", "about/", "who-is-zhang-jianbai/", "authors/"] + ["topics/"+c["slug"]+"/" for c in categories] + ["articles/"+a["slug"]+"/" for a in articles]
 urls += ["tags/"+t["slug"]+"/" for t in tags]
 urls += ['authors/'+quote(name, safe='')+'/' for name in author_names]
 urls += ['features/'+f['slug']+'/' for f in features]
+urls += internal_urls
 urls += [f'articles/page/{n}/' for n in range(2,(len(catalog)+19)//20+1)]
 (OUT/"sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+''.join(f'<url><loc>{ORIGIN}{link(p)}</loc></url>' for p in urls)+"</urlset>", encoding="utf-8")
 (OUT/"robots.txt").write_text("User-agent: *\nAllow: /\nSitemap: "+ORIGIN+link("sitemap.xml")+"\n", encoding="utf-8")

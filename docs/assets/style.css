@@ -233,3 +233,8 @@ footer{margin:0 28px;padding:14px 0}
 @media(max-width:650px){.main-column .article-summary{padding:14px 16px;font-size:15px}.summary-source{padding:4px 0}}
 .author-index{display:flex;flex-wrap:wrap;gap:8px 18px;margin:20px 0 28px;padding-bottom:20px;border-bottom:1px solid #c8c8c4;font-size:15px;line-height:1.7}
 .site-name{margin:0;font:inherit}
+.internal-notice{padding:14px 18px;border-left:3px solid #8b8374;background:#f2f0ea;font-size:14px;line-height:1.8}
+.internal-prose{overflow-wrap:anywhere}
+.internal-prose table{display:block;max-width:100%;overflow-x:auto;border-collapse:collapse;margin:22px 0;font-size:15px}
+.internal-prose td,.internal-prose th{border:1px solid #c8c8c4;padding:10px;min-width:85px;vertical-align:top}
+.internal-prose th{background:#f2f0ea;text-align:left}
