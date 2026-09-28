@@ -3,6 +3,7 @@ import json
 import re
 from html import escape
 from html.parser import HTMLParser
+from urllib.parse import quote
 
 
 class SafeFragment(HTMLParser):
@@ -58,9 +59,17 @@ def build_internal(root, page, layout, link):
         year = escape(str(record.get('year') or '年份未标明'))
         category = escape(record.get('category') or '其他资料')
         files = '、'.join(escape(name) for name in record['source_files'])
+        originals = [name for name in record['source_files']
+                     if (root / 'docs/files/internal' / name).is_file()]
+        assert originals, f'Missing original file: {record["id"]}'
+        downloads = '<section class="original-downloads" aria-label="原始文件下载"><h2>下载原始文件</h2><ul>'
+        for name in originals:
+            url = link('files/internal/' + quote(name, safe=''))
+            downloads += f'<li><a href="{url}" download="{escape(name, quote=True)}">下载原件：{escape(name)}</a></li>'
+        downloads += '</ul><p class="meta">原始文件，未作转换或修改。</p></section>'
         body = (f'<article class="internal-document"><p><a href="{link("internal/")}">← 内部资料目录</a></p>'
                 f'<h1 class="page-title">{title}</h1><p class="meta">{category} · {year}</p>'
-                f'<p class="internal-notice">{notice}</p><div class="prose internal-prose">'
+                f'{downloads}<p class="internal-notice">{notice}</p><div class="prose internal-prose">'
                 + ''.join(parser.parts) + f'</div><hr><p class="meta">来源文件：{files}</p></article>')
         page(path, record['title'], layout(body), '内部资料', description=record['title']+'：内部群历史资料整理。')
         urls.append(path)
