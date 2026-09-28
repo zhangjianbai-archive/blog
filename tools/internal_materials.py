@@ -43,9 +43,6 @@ def build_internal(root, page, layout, link):
     ids = [record['id'] for record in records]
     assert len(ids) == len(set(ids)), 'Duplicate internal material ID'
     assert all(re.fullmatch(r'[a-z0-9_-]+', slug) for slug in ids)
-    notice = ('资料由投稿者提供，原存于内部群。本栏目保存历史材料，不代表本站认可其中的观点、'
-              '承诺或健康建议，也不将原文中的指控视为已证实事实。正文按原文整理排版；'
-              '历史报名说明不作为当前报名指引。')
     groups = {}
     urls = ['internal/']
     for record in published:
@@ -66,18 +63,17 @@ def build_internal(root, page, layout, link):
         for name in originals:
             url = link('files/internal/' + quote(name, safe=''))
             downloads += f'<li><a href="{url}" download="{escape(name, quote=True)}">下载原件：{escape(name)}</a></li>'
-        downloads += '</ul><p class="meta">原始文件，未作转换或修改。</p></section>'
+        downloads += '</ul></section>'
         body = (f'<article class="internal-document"><p><a href="{link("internal/")}">← 内部资料目录</a></p>'
                 f'<h1 class="page-title">{title}</h1><p class="meta">{category} · {year}</p>'
-                f'{downloads}<p class="internal-notice">{notice}</p><div class="prose internal-prose">'
+                f'{downloads}<div class="prose internal-prose">'
                 + ''.join(parser.parts) + f'</div><hr><p class="meta">来源文件：{files}</p></article>')
         page(path, record['title'], layout(body), '内部资料', description=record['title']+'：内部群历史资料整理。')
         urls.append(path)
         groups.setdefault(record.get('category') or '其他资料', []).append(
             f'<li><a href="{link(path)}">{title}</a><span class="meta"> · {year}</span></li>')
-    listing = ''.join(f'<section><h2>{escape(category)}</h2><ul class="catalog-list">'+''.join(items)+'</ul></section>'
+    listing = ''.join('<section>'+('' if category == '内部资料' else f'<h2>{escape(category)}</h2>')+'<ul class="catalog-list">'+''.join(items)+'</ul></section>'
                       for category, items in groups.items())
-    body = (f'<h1 class="page-title">内部资料</h1><p>{notice}</p>'
-            f'<p class="meta">已整理 {len(published)} 项资料。与评论文章分开收录。</p>'+listing)
+    body = '<h1 class="page-title">内部资料</h1>'+listing
     page('internal/', '内部资料', layout(body), '内部资料', description='课程规则、报名说明、问答与教学材料等内部群历史资料。')
     return urls
