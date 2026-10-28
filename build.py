@@ -377,6 +377,12 @@ for a in articles:
     back = f'<a class="back-results" href="{link("articles/")}">返回文章目录</a>'
     article_body = f'<article><header class="article-heading">{back}<h1 class="post-title article-title">{e(a["title"])}</h1>{metadata(a)}</header>'+summary+f'<div class="prose">{sections}</div>{article_tags(a)}<div class="reading-footer">{back}</div></article><div class="reading-controls" aria-label="阅读工具"><button type="button" id="toggle-toc" aria-controls="reading-navigation" aria-expanded="false">目录</button><a href="#top" id="back-top">回到顶部 ↑</a></div>'
     article_body += series_html(a)+related_html(a)
+    custom = ROOT / 'content/custom-articles' / (a['slug']+'.html')
+    if custom.exists():
+        custom_html = custom.read_text(encoding='utf-8')
+        panel, remainder = custom_html.split('<div class="prose">', 1)
+        article_body = panel + f'<article><header class="article-heading">{back}<h1 class="post-title article-title">{e(a["title"])}</h1>{metadata(a)}</header><div class="prose">' + remainder + '</article>'
+        reading_side = None
     url=ORIGIN+link('articles/'+a['slug']+'/')
     description=' '.join(a.get('excerpt',[])) or a['title']
     schema={'@context':'https://schema.org','@type':'BlogPosting','headline':a['title'],'url':url,'mainEntityOfPage':url,'description':description,'inLanguage':'zh-CN','author':{'@type':'Person','name':a['author']}}
