@@ -380,6 +380,13 @@ for a in articles:
     custom = ROOT / 'content/custom-articles' / (a['slug']+'.html')
     if custom.exists():
         custom_html = custom.read_text(encoding='utf-8')
+        def custom_image(match):
+            tag = match.group(0)
+            src = re.search(r'src="([^"]+)"', tag).group(1)
+            width, height = image_size(OUT / src.removeprefix(BASE+'/'))
+            tag = re.sub(r'\s(?:width|height)="[^"]*"', '', tag)
+            return tag[:-1]+f' width="{width}" height="{height}">'
+        custom_html = re.sub(r'<img\b[^>]*>', custom_image, custom_html)
         panel, remainder = custom_html.split('<div class="prose">', 1)
         article_body = panel + f'<article><header class="article-heading">{back}<h1 class="post-title article-title">{e(a["title"])}</h1>{metadata(a)}</header><div class="prose">' + remainder + '</article>'
         reading_side = None

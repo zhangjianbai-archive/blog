@@ -138,13 +138,17 @@ class RenderedSite(unittest.TestCase):
         seo_titles = json.loads((ROOT/'content/seo_titles.json').read_text(encoding='utf-8'))
         for article in json.loads((ROOT/'content/articles.json').read_text(encoding='utf-8')):
             with self.subTest(slug=article['slug']):
-                item = presentation[article['slug']]
+                item = presentation.get(article['slug'])
                 html = (ROOT/'docs/articles'/article['slug']/'index.html').read_text(encoding='utf-8')
                 self.assertIn('<title>'+escape(seo_titles.get(article['slug'], article['title']))+' · 张健柏档案馆</title>', html)
                 heading = re.search(r'<h1\b[^>]*>(.*?)</h1>', html).group(1)
                 self.assertEqual(unescape(heading), article['title'])
                 schema = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', html, re.S).group(1))
                 self.assertEqual(schema['headline'], article['title'])
+                if (ROOT/'content/custom-articles'/(article['slug']+'.html')).exists():
+                    self.assertIn('id="complaints"', html)
+                    self.assertIn('class="source-comments"', html)
+                    continue
                 self.assertEqual(schema['description'], item['excerpt'])
                 summary = re.search(r'<section class="article-summary">(.*?)</section>', html, re.S).group(1)
                 for point in item['points']:
@@ -169,6 +173,9 @@ class RenderedSite(unittest.TestCase):
                         elif 'markdown' in p: expected.append(p['markdown'].replace('**', ''))
                         elif 'table' in p: expected.extend(cell for row in p['table'] for cell in row)
             page = Page((ROOT/'docs/articles'/article['slug']/'index.html').read_text(encoding='utf-8'))
+            custom = ROOT/'content/custom-articles'/(article['slug']+'.html')
+            if custom.exists():
+                expected = Page(custom.read_text(encoding='utf-8')).prose
             self.assertEqual(normalized(''.join(expected)), normalized(''.join(page.prose)), article['slug'])
 
     def test_fragments_and_image_dimensions(self):
