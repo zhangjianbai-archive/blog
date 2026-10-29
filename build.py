@@ -392,6 +392,21 @@ for a in articles:
         panel, remainder = custom_html.split('<div class="prose">', 1)
         article_body = panel + f'<article><header class="article-heading">{back}<h1 class="post-title article-title">{e(a["title"])}</h1>{metadata(a)}</header><div class="prose">' + remainder + '</article>'
         reading_side = None
+        if 'class="archive-comments"' in custom_html:
+            # Only source headings belong in the TOC; comment authors do not.
+            source_part = custom_html.split('<details', 1)[0]
+            custom_toc = '<a href="#article-text">正文</a>'
+            for index, heading in enumerate(re.finditer(r'<h([1-4])\b[^>]*>(.*?)</h\1>', source_part, re.S)):
+                label = unescape(re.sub(r'<[^>]+>', '', heading.group(2))).strip()
+                if label == '正文' or len(label) > 60:
+                    continue
+                anchor = f'archive-heading-{index}'
+                article_body = article_body.replace(heading.group(0), f'<span id="{anchor}"></span>'+heading.group(0), 1)
+                custom_toc += f'<a href="#{anchor}">{e(label)}</a>'
+            custom_toc += '<a href="#comments">知乎评论</a>'
+            article_body = article_body.replace('<div class="prose">', '<div class="prose"><span id="article-text"></span>', 1)
+            article_body += '<div class="reading-controls" aria-label="阅读工具"><button type="button" id="toggle-toc" aria-controls="reading-navigation" aria-expanded="false">目录</button><a href="#top" id="back-top">回到顶部 ↑</a></div>'
+            reading_side = '<aside id="reading-navigation" class="sidebar article-sidebar" aria-label="本文侧栏"><section class="toc"><h2>目录</h2>'+custom_toc+'</section></aside>'
     url=ORIGIN+link('articles/'+a['slug']+'/')
     description=' '.join(a.get('excerpt',[])) or a['title']
     schema={'@context':'https://schema.org','@type':'BlogPosting','headline':a['title'],'url':url,'mainEntityOfPage':url,'description':description,'inLanguage':'zh-CN','author':{'@type':'Person','name':a['author']}}
