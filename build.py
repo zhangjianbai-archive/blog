@@ -36,6 +36,8 @@ catalog.insert(0, {k: roster[k] for k in ('slug', 'title', 'author', 'category',
 # Keep the two established homepage articles, followed only by newly submitted posts.
 HOME_FEATURED_SLUGS = (
     'qingshan-university-roster', 'congying-information-cocoon',
+    'xiao-zexi-confession', 'xiao-zexi-ordinary-pain',
+    'xingyunliushui-2016-letter', 'xiao-zexi-letter-response',
     'zhang-chengfeng-online-underworld', 'zhang-chengfeng-sexual-repression',
     'huang-chuanke-qianli-survey', 'huang-chuanke-world-first-claim',
 )

@@ -70,6 +70,8 @@ class RenderedSite(unittest.TestCase):
     def test_homepage_selection_and_verbatim_previews(self):
         expected = (
             'qingshan-university-roster', 'congying-information-cocoon',
+            'xiao-zexi-confession', 'xiao-zexi-ordinary-pain',
+            'xingyunliushui-2016-letter', 'xiao-zexi-letter-response',
             'zhang-chengfeng-online-underworld', 'zhang-chengfeng-sexual-repression',
             'huang-chuanke-qianli-survey', 'huang-chuanke-world-first-claim',
         )
@@ -146,8 +148,12 @@ class RenderedSite(unittest.TestCase):
                 schema = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', html, re.S).group(1))
                 self.assertEqual(schema['headline'], article['title'])
                 if (ROOT/'content/custom-articles'/(article['slug']+'.html')).exists():
-                    self.assertIn('id="complaints"', html)
-                    self.assertIn('class="source-comments"', html)
+                    if article['slug'] == 'klein-wang-xinchang-thinking':
+                        self.assertIn('id="complaints"', html)
+                        self.assertIn('class="source-comments"', html)
+                    else:
+                        self.assertIn('class="archive-comments"', html)
+                        self.assertIn('id="comments"', html)
                     continue
                 self.assertEqual(schema['description'], item['excerpt'])
                 summary = re.search(r'<section class="article-summary">(.*?)</section>', html, re.S).group(1)

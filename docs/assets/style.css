@@ -243,3 +243,12 @@ footer{margin:0 28px;padding:14px 0}
 .internal-prose table{display:block;max-width:100%;overflow-x:auto;border-collapse:collapse;margin:22px 0;font-size:15px}
 .internal-prose td,.internal-prose th{border:1px solid #c8c8c4;padding:10px;min-width:85px;vertical-align:top}
 .internal-prose th{background:#f2f0ea;text-align:left}
+.archive-comments{margin-top:36px;border-top:1px solid var(--line);padding-top:16px}
+.archive-comments summary{cursor:pointer;font-size:19px;font-weight:700}
+.archive-comments .archive-note{font-size:12px;color:var(--muted);line-height:1.8;margin:14px 0}
+.archive-comments .comment{padding:18px 0;border-bottom:1px solid var(--line);font-size:15px}
+.archive-comments .comment.reply{margin-left:24px;padding-left:16px;border-left:2px solid var(--line)}
+.archive-comments .comment h3,.archive-comments .comment h4{font-size:15px;margin:0 0 5px}
+.archive-comments .meta{font-size:12px;color:var(--muted)}
+.archive-comments .text,.archive-comments .content{white-space:pre-wrap;line-height:1.9}
+.archive-comments img{max-width:100%;height:auto}
